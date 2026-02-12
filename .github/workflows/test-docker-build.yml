@@ -1,0 +1,148 @@
+name: Conditional Build Docker Images
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'percona/**'
+      - 'php/**'
+      - 'nginx/**'
+      - 'mysql/**'
+      - 'apache/**'
+      - 'workspace/**'
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'percona/**'
+      - 'php/**'
+      - 'nginx/**'
+      - 'mysql/**'
+      - 'apache/**'
+      - 'workspace/**'
+
+jobs:
+  filter-paths:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v6
+      - id: paths-changed
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            php56:
+              - 'php/php56/**'
+            php71:
+              - 'php/php71/**'
+            php73:
+              - 'php/php73/**'
+            php74:
+              - 'php/php74/**'
+            php80:
+              - 'php/php80/**'
+            php81:
+              - 'php/php81/**'
+            php82:
+              - 'php/php82/**'
+            php83:
+              - 'php/php83/**'
+            php84:
+              - 'php/php84/**'
+            php85:
+              - 'php/php85/**'
+            mysql:
+              - 'mysql/**'
+            percona:
+              - 'percona/**'
+            nginx:
+              - 'nginx/**'
+            apache:
+              - 'apache/**'
+            workspace:
+              - 'workspace/**'
+      - id: set-matrix
+        run: |
+          set -euo pipefail
+
+          dirs=()
+          if [[ "${{ steps.paths-changed.outputs.php56 }}" == 'true' ]]; then
+            dirs+=("php/php56")
+          fi
+          if [[ "${{ steps.paths-changed.outputs.php71 }}" == 'true' ]]; then
+            dirs+=("php/php71")
+          fi
+          if [[ "${{ steps.paths-changed.outputs.php73 }}" == 'true' ]]; then
+            dirs+=("php/php73")
+          fi
+          if [[ "${{ steps.paths-changed.outputs.php74 }}" == 'true' ]]; then
+            dirs+=("php/php74")
+          fi
+          if [[ "${{ steps.paths-changed.outputs.php80 }}" == 'true' ]]; then
+            dirs+=("php/php80")
+          fi
+          if [[ "${{ steps.paths-changed.outputs.php81 }}" == 'true' ]]; then
+            dirs+=("php/php81")
+          fi
+          if [[ "${{ steps.paths-changed.outputs.php82 }}" == 'true' ]]; then
+            dirs+=("php/php82")
+          fi
+          if [[ "${{ steps.paths-changed.outputs.php83 }}" == 'true' ]]; then
+            dirs+=("php/php83")
+          fi
+          if [[ "${{ steps.paths-changed.outputs.php84 }}" == 'true' ]]; then
+            dirs+=("php/php84")
+          fi
+          if [[ "${{ steps.paths-changed.outputs.php85 }}" == 'true' ]]; then
+            dirs+=("php/php85")
+          fi
+          if [[ "${{ steps.paths-changed.outputs.percona }}" == 'true' ]]; then
+            dirs+=("percona")
+          fi
+          if [[ "${{ steps.paths-changed.outputs.mysql }}" == 'true' ]]; then
+            dirs+=("mysql")
+          fi
+          if [[ "${{ steps.paths-changed.outputs.nginx }}" == 'true' ]]; then
+            dirs+=("nginx")
+          fi
+          if [[ "${{ steps.paths-changed.outputs.apache }}" == 'true' ]]; then
+            dirs+=("apache")
+          fi
+          if [[ "${{ steps.paths-changed.outputs.workspace }}" == 'true' ]]; then
+            dirs+=("workspace")
+          fi
+
+          if [ ${#dirs[@]} -eq 0 ]; then
+            echo "No directories changed"
+            matrix='{"include":[]}'
+          else
+            matrix='{"include":['
+            first=true
+            for dir in "${dirs[@]}"; do
+              if [ "$first" = true ]; then
+                first=false
+              else
+                matrix+=","
+              fi
+              matrix+="{\"directory\":\"$dir\"}"
+            done
+            matrix+=']}'
+          fi
+
+          echo "Matrix: $matrix"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: filter-paths
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{fromJson(needs.filter-paths.outputs.matrix)}}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: docker/setup-buildx-action@v3
+      - name: Build Docker image
+        run: |
+          docker build ./${{ matrix.directory }} -t bitrixdock/${{ matrix.directory }}:latest
