@@ -6,3 +6,4 @@ logs
 www/bitrix
 www/upload
 www/vendor
+www/local/vendor
