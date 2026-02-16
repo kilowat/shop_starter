@@ -11,12 +11,12 @@
     },
     "autoload": {
         "psr-4": {
-            "Local\\": "/"
+            "Local\\": "local"
         }
     },
     "config": {
         "process-timeout": 1800,
-        "vendor-dir": "./vendor",
+        "vendor-dir": "../vendor",
         "allow-plugins": {
             "wikimedia/composer-merge-plugin": true
         }
