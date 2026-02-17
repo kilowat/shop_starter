@@ -2,7 +2,7 @@
 return [
     'composer' => [
         'value' => [
-            'config_path' => 'www/local/composer.json'
+            'config_path' => 'local/composer.json'
         ]
     ],
     'routing' => [

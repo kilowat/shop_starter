@@ -1,14 +1,14 @@
 <?php
-namespace Auth;
+namespace Controllers;
 
 use Bitrix\Main\Engine\Controller;
 
-class AuthController extends Controller 
+class AuthController extends Controller
 {
     protected function getDefaultPreFilters(): array
     {
         return [
- 
+
         ];
     }
 

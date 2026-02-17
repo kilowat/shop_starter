@@ -7,12 +7,13 @@
     },
     "autoload": {
         "psr-4": {
-            "Auth\\": "auth"
+            "Controllers\\": "controllers/",
+            "Lib\\": "lib/"
         }
     },
     "config": {
         "process-timeout": 1800,
-        "vendor-dir": "../../vendor",
+        "vendor-dir": "./vendor",
         "allow-plugins": {
             "wikimedia/composer-merge-plugin": true
         }

@@ -1,9 +1,13 @@
 <?php
 
+
 use Bitrix\Main\Routing\RoutingConfigurator;
+use Controllers\AuthController;
+
+
 
 return function (RoutingConfigurator $routes) {
-    
-    $routes->get('/api/auth/login', [Auth\AuthController::class, 'login']);
-    
+
+    $routes->get('/api/auth/login', [AuthController::class, 'login']);
+
 };
