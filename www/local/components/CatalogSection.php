@@ -6,7 +6,6 @@ use Lib\Common\Component\AbstractComponentBuilder;
 class CatalogSection extends AbstractComponentBuilder
 {
     protected string $name = 'bitrix:catalog.section';
-
     protected array $defaultParams = [
         "ACTION_VARIABLE" => "action",
         "ADD_PICT_PROP" => "-",
@@ -112,6 +111,8 @@ class CatalogSection extends AbstractComponentBuilder
         "USE_PRODUCT_QUANTITY" => "N"
     ];
 
+    protected array $allowRequestParams = ['sectionId'];
+
     private function __construct($params = [])
     {
         $this->params = $params;
@@ -131,15 +132,8 @@ class CatalogSection extends AbstractComponentBuilder
         return $self;
     }
 
-    public function setDepth(int $depth): static
+    public function sectionId($value)
     {
-        $this->params['TOP_DEPTH'] = max(1, min(5, $depth));
-        return $this;
-    }
-
-    public function setPageElementCount($value): static
-    {
-        $this->params['PAGE_ELEMENT_COUNT'] = $value;
-        return $this;
+        $this->params['SECTION_ID'] = $value;
     }
 }

@@ -21,7 +21,7 @@ abstract class AbstractComponentBuilder
 
     public function getMergedParams(): array
     {
-        return array_merge($this->params, $this->defaultParams);
+        return array_merge($this->defaultParams, $this->params);
     }
 
     public function fromRequest(): static
@@ -44,18 +44,21 @@ abstract class AbstractComponentBuilder
         return $this;
     }
 
-    public function render(string $template = ''): void
+    public function setTempate($template = '') 
     {
-        $template = empty($template) ? $this->template : $template;
+        $this->template = $template;
+    }
+    public function render($returnResult = false): mixed
+    {
         global $APPLICATION;
 
-        $APPLICATION->IncludeComponent(
+        return $APPLICATION->IncludeComponent(
             $this->name,
-            $template,
+            $this->template,
             $this->getMergedParams(),
             false,
             ['HIDE_ICONS' => 'Y'],
-            true
+            $returnResult
         );
     }
 
