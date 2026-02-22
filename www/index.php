@@ -1,4 +1,5 @@
 <?php
+
 require($_SERVER["DOCUMENT_ROOT"] . "/bitrix/header.php");
 
 $APPLICATION->SetTitle("О компании");
@@ -13,6 +14,8 @@ $APPLICATION->SetTitle("О компании");
         Здесь может быть любой HTML-контент.
     </p>
 </main>
+
+
 <?php
 require($_SERVER["DOCUMENT_ROOT"] . "/bitrix/footer.php");
 ?>

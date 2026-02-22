@@ -10,7 +10,10 @@
             "Controllers\\": "controllers/",
             "Components\\": "components/",
             "Lib\\": "lib/"
-        }
+        },
+        "files": [
+            "config/services.php"
+        ]
     },
     "config": {
         "process-timeout": 1800,
