@@ -4,11 +4,15 @@ namespace Controllers;
 use Bitrix\Main\Engine\Controller;
 use Lib\Auth\AuthService;
 
-class AuthController extends Controller
+final class AuthController extends Controller
 {
 
+    protected function init()
+    {
+        parent::init();
 
-
+        // initialize services and/or load modules
+    }
     protected function getDefaultPreFilters(): array
     {
         return [
