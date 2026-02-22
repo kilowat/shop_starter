@@ -9,6 +9,7 @@
         "psr-4": {
             "Controllers\\": "controllers/",
             "Components\\": "components/",
+            "Services\\": "services/",
             "Lib\\": "lib/"
         },
         "files": [
