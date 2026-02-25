@@ -1,7 +1,7 @@
 <?php
 namespace Components;
 
-use Lib\Common\Component\AbstractComponentBuilder;
+use Wigital\Lib\Common\Component\AbstractComponentBuilder;
 
 class CatalogSection extends AbstractComponentBuilder
 {

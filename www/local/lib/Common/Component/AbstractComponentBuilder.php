@@ -1,5 +1,5 @@
 <?php
-namespace Lib\Common\Component;
+namespace Wigital\Lib\Common\Component;
 
 use Bitrix\Main\Application;
 use Bitrix\Main\Text\StringHelper;
@@ -44,7 +44,7 @@ abstract class AbstractComponentBuilder
         return $this;
     }
 
-    public function setTempate($template = '') 
+    public function setTempate($template = '')
     {
         $this->template = $template;
     }

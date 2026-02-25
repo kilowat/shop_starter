@@ -1,7 +1,7 @@
 <?php
 
 use Bitrix\Main\DI\ServiceLocator;
-use Lib\Auth\AuthService;
+use Wigital\Lib\Auth\Services\AuthService;
 
 $locator = ServiceLocator::getInstance();
 

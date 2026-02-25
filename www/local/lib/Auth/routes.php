@@ -2,7 +2,7 @@
 
 
 use Bitrix\Main\Routing\RoutingConfigurator;
-use Controllers\AuthController;
+use Wigital\Lib\Auth\Controllers\AuthController;
 
 
 

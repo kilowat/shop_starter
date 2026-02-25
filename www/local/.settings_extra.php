@@ -8,7 +8,8 @@ return [
     'routing' => [
         'value' => [
             'config' => [
-                'auth.php',
+                'lib.php',
+                'app.php'
             ],
         ],
         'readonly' => false,

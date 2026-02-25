@@ -1,7 +1,7 @@
 <?php
-namespace Lib\Auth;
+namespace Wigital\Lib\Basket\Services;
 
-class AuthService
+class BasketService
 {
     public function login()
     {

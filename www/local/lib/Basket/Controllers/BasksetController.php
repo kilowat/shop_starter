@@ -1,10 +1,10 @@
 <?php
-namespace Controllers;
+namespace Wigital\Lib\Basket\Controllers;
 
 use Bitrix\Main\Engine\Controller;
-use Lib\Auth\AuthService;
+use Wigital\Lib\Basket\Services\BasketService;
 
-final class AuthController extends Controller
+final class Basketontroller extends Controller
 {
 
     protected function init()
@@ -20,8 +20,8 @@ final class AuthController extends Controller
         ];
     }
 
-    public function loginAction(AuthService $authService)
+    public function loginAction(BasketService $service)
     {
-        return $authService->login();
+        return $service->login();
     }
 }

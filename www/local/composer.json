@@ -7,13 +7,11 @@
     },
     "autoload": {
         "psr-4": {
-            "Controllers\\": "controllers/",
             "Components\\": "components/",
-            "Services\\": "services/",
-            "Lib\\": "lib/"
+            "Wigital\\Lib\\": "lib/"
         },
         "files": [
-            "config/services.php"
+            "lib/init.php"
         ]
     },
     "config": {
