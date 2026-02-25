@@ -1,5 +1,5 @@
 <?php
-namespace Wigital\Lib\Auth\Controllers;
+namespace Wigital\Lib\Auth\Controller;
 
 use Bitrix\Main\Engine\Controller;
 use Wigital\Lib\Auth\Services\AuthService;
