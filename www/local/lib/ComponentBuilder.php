@@ -1,12 +1,12 @@
 <?php
-namespace Wigital\Lib\Common\Component;
+namespace Lib;
 
 use Bitrix\Main\Application;
 use Bitrix\Main\Text\StringHelper;
 use Bitrix\Main\Engine\Response\Component;
 use Bitrix\Main\Engine\Response\ContentArea\Component as ContentCompnent;
 
-abstract class AbstractComponentBuilder
+abstract class ComponentBuilder
 {
     protected string $name;
     protected array $params = [];

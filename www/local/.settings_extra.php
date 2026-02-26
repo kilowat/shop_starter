@@ -8,8 +8,8 @@ return [
     'routing' => [
         'value' => [
             'config' => [
-                'lib.php',
-                'app.php'
+                'web.php',
+                'api.php'
             ],
         ],
         'readonly' => false,
@@ -25,5 +25,13 @@ return [
             'log' => null,
         ],
         'readonly' => false,
+    ],
+    'services' => [
+        'value' => [
+            Services\Auth\AuthService::class => [
+                'className' => Services\Auth\AuthService::class
+            ],
+        ],
+        'readonly' => true,
     ],
 ];

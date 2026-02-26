@@ -1,9 +1,8 @@
 <?php
 namespace Components;
 
-use Wigital\Lib\Common\Component\AbstractComponentBuilder;
-
-class CatalogSection extends AbstractComponentBuilder
+use Lib\ComponentBuilder;
+class CatalogSection extends ComponentBuilder
 {
     protected string $name = 'bitrix:catalog.section';
     protected array $defaultParams = [
