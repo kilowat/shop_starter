@@ -2,6 +2,7 @@
 namespace Controllers;
 
 use Bitrix\Main\Engine\Controller;
+use Services\Basket\BasketService;
 
 final class BasketController extends Controller
 {
@@ -19,8 +20,8 @@ final class BasketController extends Controller
         ];
     }
 
-    public function showAction()
+    public function showAction(BasketService $basketService)
     {
-        return (new \Components\Basket())->getDataKeysResponse(['ITEMS']);
+        return $basketService->getData();
     }
 }
