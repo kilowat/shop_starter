@@ -8,16 +8,16 @@ use Bitrix\Main\Engine\Response\ContentArea\Component as ContentCompnent;
 
 abstract class ComponentBuilder
 {
-    protected string $name;
-    protected array $params = [];
-    protected array $defaultParams = [];
-    protected string $template = '.default';
+    protected $name;
+    protected $params = [];
+    protected $defaultParams = [];
+    protected $template = '.default';
 
     /**
      * @var array Список параметров/методов, которые можно переопределять через Request
      * Могут быть названия функций
      */
-    protected array $allowRequestParams = [];
+    protected $allowRequestParams = [];
 
     public function getMergedParams(): array
     {

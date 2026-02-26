@@ -4,8 +4,8 @@ namespace Components;
 use Lib\ComponentBuilder;
 class CatalogSection extends ComponentBuilder
 {
-    protected string $name = 'bitrix:catalog.section';
-    protected array $defaultParams = [
+    protected $name = 'bitrix:catalog.section';
+    protected $defaultParams = [
         "ACTION_VARIABLE" => "action",
         "ADD_PICT_PROP" => "-",
         "ADD_PROPERTIES_TO_BASKET" => "Y",
@@ -110,9 +110,9 @@ class CatalogSection extends ComponentBuilder
         "USE_PRODUCT_QUANTITY" => "N"
     ];
 
-    protected array $allowRequestParams = ['sectionId'];
+    protected $allowRequestParams = ['sectionId'];
 
-    private function __construct($params = [])
+    public function __construct($params = [])
     {
         $this->params = $params;
     }
