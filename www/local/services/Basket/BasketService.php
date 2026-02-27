@@ -20,12 +20,16 @@ class BasketService
     private array $skuParentMap = []; // Карта соответствия оффер -> родитель
     private array $elementUrlMap = []; // Карта URL элементов
 
-    public function __construct()
+    private string $productProviderClass;
+
+    public function __construct($productProviderClass = Catalog\Product\CatalogProvider::class)
     {
+
         Loader::includeModule('sale');
         Loader::includeModule('catalog');
         Loader::includeModule('iblock');
         Loader::includeModule('currency');
+        $this->productProviderClass = $productProviderClass;
 
         $this->basket = Sale\Basket::loadItemsForFUser(
             Sale\Fuser::getId(),
@@ -55,7 +59,7 @@ class BasketService
                 'QUANTITY' => $quantity,
                 'CURRENCY' => CurrencyManager::getBaseCurrency(),
                 'LID' => SITE_ID,
-                'PRODUCT_PROVIDER_CLASS' => Catalog\Product\CatalogProvider::class,
+                'PRODUCT_PROVIDER_CLASS' => $this->productProviderClass,
             ];
 
             // Добавляем свойства товара если есть (для офферов)
@@ -275,33 +279,46 @@ class BasketService
         $basePrice = PriceMaths::roundPrecision($this->basket->getBasePrice());
         $finalPrice = PriceMaths::roundPrecision($this->basket->getPrice());
         $discountValue = $basePrice - $finalPrice;
-        $weight = $this->basket->getWeight();
         $vatSum = PriceMaths::roundPrecision($this->basket->getVatSum());
+        $weight = $this->basket->getWeight();
+
+        $currency = CurrencyManager::getBaseCurrency();
 
         $discountPercent = $basePrice > 0
             ? round(($discountValue / $basePrice) * 100, 2)
             : 0;
 
-        $currency = CurrencyManager::getBaseCurrency();
-
         return [
             'count' => $this->getTotalQuantity(),
             'orderable_count' => $this->getOrderableQuantity(),
-            'base_price' => $basePrice,
-            'base_price_formatted' => $this->formatPrice($basePrice, $currency),
-            'final_price' => $finalPrice,
-            'final_price_formatted' => $this->formatPrice($finalPrice, $currency),
-            'discount_value' => $discountValue,
-            'discount_value_formatted' => $this->formatPrice($discountValue, $currency),
-            'discount_percent' => $discountPercent,
-            'weight' => $weight,
-            'weight_formatted' => $this->formatWeight($weight),
-            'vat_sum' => $vatSum,
-            'vat_sum_formatted' => $this->formatPrice($vatSum, $currency),
-            'price_without_vat' => $finalPrice - $vatSum,
-            'price_without_vat_formatted' => $this->formatPrice($finalPrice - $vatSum, $currency),
+
+            'price' => [
+                'base' => $basePrice,
+                'base_formatted' => $this->formatPrice($basePrice, $currency),
+                'final' => $finalPrice,
+                'final_formatted' => $this->formatPrice($finalPrice, $currency),
+            ],
+
+            'discount' => [
+                'value' => $discountValue,
+                'value_formatted' => $this->formatPrice($discountValue, $currency),
+                'percent' => $discountPercent,
+                'has_discounts' => !empty($this->discountData['applied_list']),
+            ],
+
+            'vat' => [
+                'value' => $vatSum,
+                'value_formatted' => $this->formatPrice($vatSum, $currency),
+                'without_vat' => $finalPrice - $vatSum,
+                'without_vat_formatted' => $this->formatPrice($finalPrice - $vatSum, $currency),
+            ],
+
+            'weight' => [
+                'value' => $weight,
+                'formatted' => $this->formatWeight($weight),
+            ],
+
             'currency' => $currency,
-            'has_discounts' => !empty($this->discountData['applied_list']),
         ];
     }
 
@@ -468,37 +485,51 @@ class BasketService
 
     private function buildPriceData(Sale\BasketItem $item): array
     {
+        $currency = $item->getCurrency();
+
         $basePrice = PriceMaths::roundPrecision((float) $item->getBasePrice());
         $finalPrice = PriceMaths::roundPrecision((float) $item->getPrice());
         $discountPrice = PriceMaths::roundPrecision((float) $item->getDiscountPrice());
 
         $discountPercent = 0;
         if ($basePrice > 0 && $discountPrice > 0 && $item->getField('CUSTOM_PRICE') !== 'Y') {
-            $discountPercent = Sale\Discount::calculateDiscountPercent($basePrice, $discountPrice);
-            $discountPercent = $discountPercent === null ? 0 : round($discountPercent, 2);
+            $percent = Sale\Discount::calculateDiscountPercent($basePrice, $discountPrice);
+            $discountPercent = $percent ? round($percent, 2) : 0;
         }
 
-        // Сумма с учетом количества
-        $sumValue = $finalPrice * $item->getQuantity();
-        $sumBaseValue = $basePrice * $item->getQuantity();
-        $sumDiscountValue = $discountPrice * $item->getQuantity();
+        $quantity = $item->getQuantity();
+
+        $sumBase = $basePrice * $quantity;
+        $sumFinal = $finalPrice * $quantity;
+        $sumDiscount = $discountPrice * $quantity;
 
         return [
-            'base_price' => $basePrice,
-            'base_price_formatted' => $this->formatPrice($basePrice, $item->getCurrency()),
-            'final_price' => $finalPrice,
-            'final_price_formatted' => $this->formatPrice($finalPrice, $item->getCurrency()),
-            'discount_price' => $discountPrice,
-            'discount_price_formatted' => $this->formatPrice($discountPrice, $item->getCurrency()),
-            'discount_percent' => $discountPercent,
-            'sum' => $sumValue,
-            'sum_formatted' => $this->formatPrice($sumValue, $item->getCurrency()),
-            'sum_base' => $sumBaseValue,
-            'sum_base_formatted' => $this->formatPrice($sumBaseValue, $item->getCurrency()),
-            'sum_discount' => $sumDiscountValue,
-            'sum_discount_formatted' => $this->formatPrice($sumDiscountValue, $item->getCurrency()),
-            'vat_rate' => (float) $item->getVatRate(),
-            'vat_value' => $this->calculateVatValue($item),
+            'price' => [
+                'base' => $basePrice,
+                'base_formatted' => $this->formatPrice($basePrice, $currency),
+                'final' => $finalPrice,
+                'final_formatted' => $this->formatPrice($finalPrice, $currency),
+            ],
+
+            'discount' => [
+                'value' => $discountPrice,
+                'value_formatted' => $this->formatPrice($discountPrice, $currency),
+                'percent' => $discountPercent,
+            ],
+
+            'sum' => [
+                'base' => $sumBase,
+                'base_formatted' => $this->formatPrice($sumBase, $currency),
+                'final' => $sumFinal,
+                'final_formatted' => $this->formatPrice($sumFinal, $currency),
+                'discount' => $sumDiscount,
+                'discount_formatted' => $this->formatPrice($sumDiscount, $currency),
+            ],
+
+            'vat' => [
+                'rate' => (float) $item->getVatRate(),
+                'value' => $this->calculateVatValue($item),
+            ],
         ];
     }
 

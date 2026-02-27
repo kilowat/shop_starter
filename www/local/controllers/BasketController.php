@@ -22,6 +22,6 @@ final class BasketController extends Controller
 
     public function showAction(BasketService $basketService)
     {
-        return $basketService->getSummary();
+        return $basketService->getData();
     }
 }
