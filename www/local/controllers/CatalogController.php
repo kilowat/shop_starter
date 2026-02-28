@@ -15,6 +15,6 @@ final class CatalogController extends Controller
 
     public function indexAction()
     {
-        return new AjaxHtmlResponse(viewPath: '/catalog/_products_view.php');
+        return new AjaxHtmlResponse(viewPath: '/catalog/_products.php');
     }
 }

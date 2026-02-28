@@ -11,12 +11,6 @@ final class AjaxHtmlResponse extends AjaxJson
     private array $additionalParams;
     private bool $withSiteTemplate;
 
-    /**
-     * @param string $viewPath Путь до файла представления
-     * @param array $viewParams Параметры для представления
-     * @param array $additionalParams Дополнительные данные для ответа
-     * @param bool $withSiteTemplate Использовать ли шаблон сайта
-     */
     public function __construct(
         string $viewPath,
         array $viewParams = [],
@@ -28,9 +22,24 @@ final class AjaxHtmlResponse extends AjaxJson
         $this->additionalParams = $additionalParams;
         $this->withSiteTemplate = $withSiteTemplate;
 
-        $data = $this->prepareData();
+        parent::__construct($this->prepareData(), self::STATUS_SUCCESS, null);
+    }
 
-        parent::__construct($data, self::STATUS_SUCCESS, null);
+    public static function sendResponse(
+        string $viewPath,
+        array $viewParams = [],
+        array $additionalParams = [],
+        bool $withSiteTemplate = false
+    ): never {
+        $response = new self(
+            $viewPath,
+            $viewParams,
+            $additionalParams,
+            $withSiteTemplate
+        );
+
+        $response->send();
+        exit;
     }
 
     private function prepareData(): array
@@ -48,6 +57,7 @@ final class AjaxHtmlResponse extends AjaxJson
     private function renderView(): string
     {
         ob_start();
+
         try {
             global $APPLICATION;
 
@@ -63,8 +73,7 @@ final class AjaxHtmlResponse extends AjaxJson
             }
 
             return ob_get_clean() ?: '';
-
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             ob_end_clean();
             throw $e;
         }

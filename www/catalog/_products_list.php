@@ -1,10 +1,16 @@
 <?
-if (!$APPLICATION) {
+if (!defined('B_PROLOG_INCLUDED')) {
     require_once($_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_before.php');
     \CHTTP::SetStatus("404 Not Found");
     require(\Bitrix\Main\Application::getDocumentRoot() . "/404.php");
     die();
 }
+
+if ($_REQUEST['ajax_request'] === 'Y') {
+    include('_smartfilter.php');
+}
+
+
 $APPLICATION->IncludeComponent(
     "bitrix:catalog.section",
     "",
@@ -81,7 +87,8 @@ $APPLICATION->IncludeComponent(
         "PRODUCT_ID_VARIABLE" => "id",
         "PRODUCT_PROPS_VARIABLE" => "prop",
         "PRODUCT_QUANTITY_VARIABLE" => "quantity",
-        "PRODUCT_ROW_VARIANTS" => "[{'VARIANT':'2','BIG_DATA':false},{'VARIANT':'2','BIG_DATA':false},{'VARIANT':'2','BIG_DATA':false},{'VARIANT':'2','BIG_DATA':false},{'VARIANT':'2','BIG_DATA':false},{'VARIANT':'2','BIG_DATA':false}]",
+        "PRODUCT_ROW_VARIANTS" =>
+            "[{'VARIANT':'2','BIG_DATA':false},{'VARIANT':'2','BIG_DATA':false},{'VARIANT':'2','BIG_DATA':false},{'VARIANT':'2','BIG_DATA':false},{'VARIANT':'2','BIG_DATA':false},{'VARIANT':'2','BIG_DATA':false}]",
         "PRODUCT_SUBSCRIPTION" => "Y",
         "PROPERTY_CODE_MOBILE" => array(),
         "SECTION_CODE" => "",
