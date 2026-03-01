@@ -121,6 +121,7 @@ class CatalogSection extends ComponentBuilder
     {
         $self = new static();
         $self->params['PAGE_ELEMENT_COUNT'] = '18';
+        $self->setParamsFromRequest();
         return $self;
     }
 

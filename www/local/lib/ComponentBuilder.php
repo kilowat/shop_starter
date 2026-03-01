@@ -24,7 +24,7 @@ abstract class ComponentBuilder
         return array_merge($this->defaultParams, $this->params);
     }
 
-    public function fromRequest(): static
+    public function setParamsFromRequest(): static
     {
         $request = Application::getInstance()->getContext()->getRequest();
 
@@ -99,5 +99,10 @@ abstract class ComponentBuilder
             [],
             $dataKeys
         );
+    }
+
+    public function sendResponse(array $dataKeys = [])
+    {
+        $this->getResponse($dataKeys)->send();
     }
 }
