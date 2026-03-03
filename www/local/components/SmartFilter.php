@@ -5,6 +5,9 @@ use Lib\ComponentBuilder;
 class SmartFilter extends ComponentBuilder
 {
     protected $name = 'bitrix:catalog.smart.filter';
+
+    protected $template = 'custom';
+
     protected $defaultParams = [
         "CACHE_GROUPS" => "Y",
         "CACHE_TIME" => "36000000",
@@ -19,7 +22,7 @@ class SmartFilter extends ComponentBuilder
         "PAGER_PARAMS_NAME" => "arrPager",
         "POPUP_POSITION" => "left",
         "PREFILTER_NAME" => "smartPreFilter",
-        "PRICE_CODE" => array(),
+        "PRICE_CODE" => array("BASE"),
         "SAVE_IN_SESSION" => "N",
         "SECTION_CODE" => "",
         "SECTION_DESCRIPTION" => "-",

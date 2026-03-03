@@ -11,7 +11,8 @@ use Bitrix\Iblock\ElementTable;
 use Bitrix\Catalog\ProductTable;
 use Bitrix\Sale\DiscountCouponsManager;
 use Bitrix\Sale\PriceMaths;
-
+use CFile;
+use Bitrix\Main\Config\Option;
 class BasketService
 {
     private Sale\Basket $basket;
@@ -395,7 +396,7 @@ class BasketService
      * Получает изображение товара
      * Для офферов сначала проверяет свое изображение, потом родительское
      */
-    private function getImage(?array $element, ?array $parentElement): ?string
+    private function getImage(?array $element, ?array $parentElement): ?array
     {
         $imageId = null;
 
@@ -412,7 +413,25 @@ class BasketService
             return null;
         }
 
-        return \CFile::GetPath($imageId);
+        $arSize = ["width" => 250, "height" => 250];
+        $resizeType = BX_RESIZE_IMAGE_PROPORTIONAL;
+        $bInitSizes = true; 
+        $arFilters = [];
+
+        $resizedImage = \CFile::ResizeImageGet(
+            $imageId,
+            $arSize,
+            $resizeType,
+            $bInitSizes,
+            $arFilters
+        );
+        
+        $originImage =   \CFile::GetByID($imageId)?->Fetch() ?? [];
+
+        return [
+            'resized' =>  $resizedImage,
+            'origin' => array_change_key_case($originImage, CASE_LOWER),
+        ];
     }
 
     /**
@@ -712,8 +731,8 @@ class BasketService
 
     private function formatWeight(float $weight): string
     {
-        $weightKoef = (float) \COption::GetOptionString('sale', 'weight_koef', 1, SITE_ID);
-        $weightUnit = \COption::GetOptionString('sale', 'weight_unit', '', SITE_ID);
+        $weightKoef = (float) Option::get('sale', 'weight_koef', 1, SITE_ID);
+        $weightUnit = Option::get('sale', 'weight_unit', '', SITE_ID);
 
         if ($weightKoef <= 0) {
             $weightKoef = 1;

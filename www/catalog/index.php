@@ -1,18 +1,22 @@
 <?
-use Lib\AjaxHtmlResponse;
 
-if ($_REQUEST['ajax_request'] === 'Y') {
+if ($_REQUEST['ajax'] === 'Y') {
     require_once($_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_before.php');
+    Components\SmartFilter::forCatalogList();
+    die();
+}
 
-    AjaxHtmlResponse::sendResponse(
-        '/catalog/_products_list.php',
-    );
-
+if ($_REQUEST['ajax'] === 'products' || $_SERVER['ajax'] === 'products') {
+    require_once($_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_before.php');
+    Components\SmartFilter::forCatalogList();
+    Components\CatalogSection::forCatalogList()->sendResponse();
+    die();
 }
 
 require($_SERVER["DOCUMENT_ROOT"] . "/bitrix/header.php");
-$APPLICATION->SetTitle("Title");
+$APPLICATION->SetTitle("Test");
 
-include('_products_list.php');
+Components\SmartFilter::forCatalogList()->render();
+Components\CatalogSection::forCatalogList()->render();
 
 ?><? require($_SERVER["DOCUMENT_ROOT"] . "/bitrix/footer.php"); ?>
