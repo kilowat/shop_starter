@@ -5,6 +5,7 @@ use Bitrix\Main\Application;
 use Bitrix\Main\Text\StringHelper;
 use Bitrix\Main\Engine\Response\Component;
 use Bitrix\Main\Engine\Response\ContentArea\Component as ContentCompnent;
+use Bitrix\Main\Engine\Response\Converter;
 
 abstract class ComponentBuilder
 {
@@ -13,11 +14,11 @@ abstract class ComponentBuilder
     protected $defaultParams = [];
     protected $template = '.default';
 
-    /**
-     * @var array Список параметров/методов, которые можно переопределять через Request
-     * Могут быть названия функций
-     */
+    /** @var array Разрешённые параметры/методы для переопределения через Request */
     protected $allowRequestParams = [];
+
+    /** @var int|null Формат конвертора для data */
+    protected ?int $converterFormat = null;
 
     public function getMergedParams(): array
     {
@@ -32,7 +33,6 @@ abstract class ComponentBuilder
             $method = $allowed;
             $key = $allowed;
 
-            // если разрешено как функция
             if (method_exists($this, $method)) {
                 $value = $request->get($key) ?? $request->get(StringHelper::camel2snake($key));
                 if ($value !== null) {
@@ -44,10 +44,28 @@ abstract class ComponentBuilder
         return $this;
     }
 
-    public function setTempate($template = '')
+    public function setTemplate($template)
     {
         $this->template = $template;
+        return $this;
     }
+
+    public function setDataConverterFormat(?int $format): static
+    {
+        $this->converterFormat = $format;
+        return $this;
+    }
+
+    protected function convertData(array $data): array
+    {
+        if ($this->converterFormat === null) {
+            return $data;
+        }
+
+        $converter = new Converter($this->converterFormat);
+        return $converter->process($data);
+    }
+
     public function render($returnResult = false): mixed
     {
         global $APPLICATION;
@@ -72,12 +90,16 @@ abstract class ComponentBuilder
         );
 
         $component->getHtml();
-        return $component->getSectionData();
+
+        $data = $component->getSectionData();
+
+        return $this->convertData($data);
     }
 
     public function getDataKeysResponse(array $dataKeys = [])
     {
         $data = $this->getDataKeys($dataKeys);
+
         $json = json_encode([
             'status' => 'success',
             'data' => $data
@@ -104,5 +126,19 @@ abstract class ComponentBuilder
     public function sendResponse(array $dataKeys = [])
     {
         $this->getResponse($dataKeys)->send();
+    }
+
+    public function sendDataResponse(array $dataKeys = [])
+    {
+        $this->getDataKeysResponse($dataKeys)->send();
+    }
+
+    public function lowercaseKeys(): static
+    {
+        return $this->setDataConverterFormat(
+            Converter::KEYS
+            | Converter::RECURSIVE
+            | Converter::TO_LOWER
+        );
     }
 }

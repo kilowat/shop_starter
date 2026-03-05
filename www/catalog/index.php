@@ -1,8 +1,13 @@
 <?
-
-if ($_REQUEST['ajax'] === 'Y') {
+if ($_REQUEST['ajax'] === 'filter' || $_SERVER['ajax'] === 'filter') {
     require_once($_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_before.php');
-    Components\SmartFilter::forCatalogList();
+    Components\SmartFilter::forCatalogList()
+        ->lowercaseKeys()
+        ->sendDataResponse([
+            'ITEMS',
+            'PRICES',
+            'FILTER_URL'
+        ]);
     die();
 }
 
