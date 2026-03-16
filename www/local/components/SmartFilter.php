@@ -47,6 +47,17 @@ class SmartFilter extends ComponentBuilder
         return $self;
     }
 
+    public static function forCatalogListJsonResponse() 
+    {
+        return self::forCatalogList()
+        ->lowercaseKeys()
+        ->getDataKeysResponse([
+            'ITEMS',
+            'PRICES',
+            'FILTER_URL'
+        ]);
+    }
+
     public function sectionId($value)
     {
         $this->params['SECTION_ID'] = $value;
