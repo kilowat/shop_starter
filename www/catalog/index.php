@@ -22,31 +22,19 @@ $APPLICATION->SetTitle("Test");
 Components\SmartFilter::forCatalogList()->render();
 Components\CatalogSection::forCatalogList()->render();
 
-?><? require($_SERVER["DOCUMENT_ROOT"] . "/bitrix/footer.php"); ?>
-
-
-[
-    'catalog_list' => [
-        'img' => [
-                'srcset' => [
-                'width' => 800,
-                'height' => 600,
-            ] // или путь до файла    
-            'src' => [
-                    'width' => 800,
-                    'height' => 600,
-                    'exact' => false,
-            ],
-            'preview' => [
-                    'width' => 200,
-                    'height' => 200,
-                    'exact' => false 
-            ],
-            'medium' => [
-                    'width' => 400,
-                    'height' => 400,
-                    'exact' => false 
-            ],   
-        ]  
+$fetch = CIBlockElement::GetByID(11)->Fetch();
+$picId = $fetch['DETAIL_PICTURE'];
+$preset = [
+    'preivew' => [
+        'width' => 400,
+        'height' => 400,
+        'min_width' => 600,
+        'webp' => true
     ]
-]
+];
+$res = Lib\Image\ImageHelper::get($picId, $preset);
+
+$pic = Lib\Image\Picture::show($res);
+echo ($pic);
+
+?><? require($_SERVER["DOCUMENT_ROOT"] . "/bitrix/footer.php"); ?>
