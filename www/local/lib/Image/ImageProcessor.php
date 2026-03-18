@@ -14,30 +14,42 @@ class ImageProcessor
 
         $file = CFile::GetFileArray($fileId);
 
-        if (!$file)
+        if (!$file) {
             return [];
+        }
 
         $result = [];
 
         foreach ($config as $name => $settings) {
 
-            $resize = null;
-
-            if (isset($settings['width'])) {
-
-                $resize = CFile::ResizeImageGet(
-                    $fileId,
-                    [
-                        'width' => $settings['width'],
-                        'height' => $settings['height']
-                    ],
-                    BX_RESIZE_IMAGE_PROPORTIONAL,
-                    true
-                );
+            // 🔥 защита от кривых значений
+            if (!is_string($name) || !is_array($settings)) {
+                continue;
             }
 
-            if (!$resize) {
+            $resizeParams = [
+                'width' => $settings['width'] ?? $file['WIDTH'],
+                'height' => $settings['height'] ?? $file['HEIGHT'],
+            ];
 
+            $resizeType = $settings['resize_type']
+                ?? BX_RESIZE_IMAGE_PROPORTIONAL;
+
+            $filters = $settings['filters'] ?? [];
+
+            $quality = $settings['quality'] ?? 90;
+
+            $resize = CFile::ResizeImageGet(
+                $fileId,
+                $resizeParams,
+                $resizeType,
+                true,
+                $filters,
+                false,
+                $quality
+            );
+
+            if (!$resize) {
                 $resize = [
                     "src" => $file["SRC"],
                     "width" => $file["WIDTH"],
@@ -45,27 +57,28 @@ class ImageProcessor
                 ];
             }
 
-            /**
-             * WebP generation
-             */
+            // WebP
+            if ($generateWebp) {
 
-            if (
-                $generateWebp
-                && !empty($settings["webp"])
-            ) {
+                $webpQuality = $quality;
 
-                $resize["webp"] =
-                    self::convertToWebp($resize["src"]);
+                $resize["webp"] = self::convertToWebp(
+                    $resize["src"],
+                    $webpQuality
+                );
             }
 
+            // 🔥 добавляем ТОЛЬКО по имени
             $result[$name] = $resize;
         }
 
         return $result;
     }
 
-    private static function convertToWebp(string $src): string
-    {
+    private static function convertToWebp(
+        string $src,
+        int $quality = 90
+    ): string {
 
         $path = $_SERVER["DOCUMENT_ROOT"] . $src;
 
@@ -81,7 +94,11 @@ class ImageProcessor
                 file_get_contents($path)
             );
 
-            imagewebp($img, $webpPath, 85);
+            if (!$img) {
+                return $src;
+            }
+
+            imagewebp($img, $webpPath, $quality);
 
             unset($img);
         }

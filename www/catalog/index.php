@@ -26,15 +26,18 @@ $fetch = CIBlockElement::GetByID(11)->Fetch();
 $picId = $fetch['DETAIL_PICTURE'];
 $preset = [
     'preivew' => [
-        'width' => 400,
-        'height' => 400,
-        'min_width' => 600,
-        'webp' => true
+        "width" => 400,
+        "height" => 300,
+        "resize_type" => BX_RESIZE_IMAGE_PROPORTIONAL_ALT,
+        "quality" => 85, // 🔥 одно поле
+    ],
+    [
+        "class" => "img-fluid"
     ]
 ];
 $res = Lib\Image\ImageHelper::get($picId, $preset);
-
-$pic = Lib\Image\Picture::show($res);
+//var_dump($res);
+$pic = Lib\Image\Picture::show($res['resizes']['preivew']);
 echo ($pic);
 
 ?><? require($_SERVER["DOCUMENT_ROOT"] . "/bitrix/footer.php"); ?>

@@ -6,28 +6,28 @@ class ImageHelper
 {
     public static function get(
         int $fileId,
-        array $config,
+        array $settings,
         bool $generateWebp = true
     ): array {
-
         $file = \CFile::GetFileArray($fileId);
+        if (!$file) {
+            return [];
+        }
+
+        $resizes = ImageProcessor::build(
+            $fileId,
+            $settings,
+            $generateWebp
+        );
+
+        $fileLower = array_combine(
+            array_map('strtolower', array_keys($file)),
+            array_values($file)
+        );
 
         return [
-
-            "id" => $file["ID"],
-
-            "alt" => $file["DESCRIPTION"],
-
-            "description" => $file["DESCRIPTION"],
-
-            "meta" => $file,
-
-            "sizes" => ImageProcessor::build(
-                $fileId,
-                $config,
-                $generateWebp
-            )
-
+            ...$fileLower,
+            'resizes' => $resizes,
         ];
     }
 }
