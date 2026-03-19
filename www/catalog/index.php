@@ -5,12 +5,12 @@ if ($ajax) {
     require_once $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_before.php';
 
     if ($ajax === 'filter') {
-        Components\SmartFilter::forCatalogListJsonResponse()->send();
+        Components\SmartFilter::forCatalogList()->getJsonResponse()->send();
     }
 
     if ($ajax === 'products') {
         Components\SmartFilter::forCatalogList();
-        Components\CatalogSection::forCatalogList()->sendResponse();
+        Components\CatalogSection::forCatalogList()->getResponse()->send();
     }
 
     Bitrix\Main\Application::getInstance()->end();
@@ -19,25 +19,7 @@ if ($ajax) {
 require($_SERVER["DOCUMENT_ROOT"] . "/bitrix/header.php");
 $APPLICATION->SetTitle("Test");
 
-Components\SmartFilter::forCatalogList()->render();
+Components\SmartFilter::forCatalogList()->renderWebComponent();
 Components\CatalogSection::forCatalogList()->render();
-
-$fetch = CIBlockElement::GetByID(11)->Fetch();
-$picId = $fetch['DETAIL_PICTURE'];
-$preset = [
-    'preivew' => [
-        "width" => 400,
-        "height" => 300,
-        "resize_type" => BX_RESIZE_IMAGE_PROPORTIONAL_ALT,
-        "quality" => 85, // 🔥 одно поле
-    ],
-    [
-        "class" => "img-fluid"
-    ]
-];
-$res = Lib\Image\Helper::get($picId, $preset);
-//var_dump($res);
-$pic = Lib\Image\Helper::show($res['resizes']['preivew']);
-echo ($pic);
 
 ?><? require($_SERVER["DOCUMENT_ROOT"] . "/bitrix/footer.php"); ?>
