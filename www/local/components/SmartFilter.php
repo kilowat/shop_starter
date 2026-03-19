@@ -1,8 +1,7 @@
 <?php
 namespace Components;
 
-use Lib\ComponentBuilder;
-class SmartFilter extends ComponentBuilder
+class SmartFilter extends \Lib\Component\ComponentBuilder
 {
     protected $name = 'bitrix:catalog.smart.filter';
 
@@ -47,15 +46,15 @@ class SmartFilter extends ComponentBuilder
         return $self;
     }
 
-    public static function forCatalogListJsonResponse() 
+    public static function forCatalogListJsonResponse()
     {
         return self::forCatalogList()
-        ->lowercaseKeys()
-        ->getDataKeysResponse([
-            'ITEMS',
-            'PRICES',
-            'FILTER_URL'
-        ]);
+            ->lowercaseKeys()
+            ->getDataKeysResponse([
+                'ITEMS',
+                'PRICES',
+                'FILTER_URL'
+            ]);
     }
 
     public function sectionId($value)

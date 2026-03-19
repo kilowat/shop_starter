@@ -35,9 +35,9 @@ $preset = [
         "class" => "img-fluid"
     ]
 ];
-$res = Lib\Image\ImageHelper::get($picId, $preset);
+$res = Lib\Image\Helper::get($picId, $preset);
 //var_dump($res);
-$pic = Lib\Image\Picture::show($res['resizes']['preivew']);
+$pic = Lib\Image\Helper::show($res['resizes']['preivew']);
 echo ($pic);
 
 ?><? require($_SERVER["DOCUMENT_ROOT"] . "/bitrix/footer.php"); ?>

@@ -1,5 +1,5 @@
 <?php
-namespace Lib;
+namespace Lib\Component;
 
 use Bitrix\Main\Application;
 use Bitrix\Main\Text\StringHelper;

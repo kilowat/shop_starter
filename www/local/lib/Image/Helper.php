@@ -4,9 +4,33 @@ namespace Lib\Image;
 
 use CFile;
 
-class ImageProcessor
+class Helper
 {
-    public static function build(
+    public static function get(
+        int $fileId,
+        array $settings,
+        bool $generateWebp = true
+    ): array {
+        $file = CFile::GetFileArray($fileId);
+
+        if (!$file) {
+            return [];
+        }
+
+        $resizes = self::build($fileId, $settings, $generateWebp);
+
+        $fileLower = array_combine(
+            array_map('strtolower', array_keys($file)),
+            array_values($file)
+        );
+
+        return [
+            ...$fileLower,
+            'resizes' => $resizes,
+        ];
+    }
+
+    private static function build(
         int $fileId,
         array $config,
         bool $generateWebp = true
@@ -22,7 +46,6 @@ class ImageProcessor
 
         foreach ($config as $name => $settings) {
 
-            // 🔥 защита от кривых значений
             if (!is_string($name) || !is_array($settings)) {
                 continue;
             }
@@ -59,16 +82,12 @@ class ImageProcessor
 
             // WebP
             if ($generateWebp) {
-
-                $webpQuality = $quality;
-
                 $resize["webp"] = self::convertToWebp(
                     $resize["src"],
-                    $webpQuality
+                    $quality
                 );
             }
 
-            // 🔥 добавляем ТОЛЬКО по имени
             $result[$name] = $resize;
         }
 
@@ -100,7 +119,7 @@ class ImageProcessor
 
             imagewebp($img, $webpPath, $quality);
 
-            unset($img);
+            imagedestroy($img);
         }
 
         return str_replace(
@@ -108,5 +127,69 @@ class ImageProcessor
             "",
             $webpPath
         );
+    }
+
+    public static function show(
+        array $imageArr,
+        array $imgAttributes = []
+    ): string {
+
+        $src = $imageArr["webp"] ?? $imageArr["src"];
+
+        $attrs = self::buildAttributes(array_merge([
+            'src' => $src,
+            'width' => $imageArr["width"] ?? null,
+            'height' => $imageArr["height"] ?? null,
+            'alt' => $imageArr["alt"] ?? '',
+        ], $imgAttributes));
+
+        return "<img {$attrs}>";
+    }
+
+    public static function showById(
+        int $fileId,
+        array $config,
+        array $attributes = [],
+        bool $generateWebp = true
+    ): string {
+
+        $image = self::get(
+            $fileId,
+            ['default' => $config],
+            $generateWebp
+        );
+
+        return self::show(
+            $image['resizes']['default'] ?? [],
+            array_merge(
+                ['alt' => $image['alt'] ?? ''],
+                $attributes
+            )
+        );
+    }
+
+    private static function buildAttributes(array $attributes): string
+    {
+        $result = [];
+
+        foreach ($attributes as $key => $value) {
+
+            if ($value === null || $value === false) {
+                continue;
+            }
+
+            if ($value === true) {
+                $result[] = $key;
+                continue;
+            }
+
+            $result[] = sprintf(
+                '%s="%s"',
+                $key,
+                htmlspecialchars((string) $value)
+            );
+        }
+
+        return implode(' ', $result);
     }
 }
