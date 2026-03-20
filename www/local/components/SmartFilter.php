@@ -30,18 +30,13 @@ class SmartFilter extends \Lib\Component\ComponentBuilder
         "XML_EXPORT" => "N"
     ];
 
-    private $dataKeys = [
+    protected $dataKeys = [
         'ITEMS',
         'PRICES',
         'FILTER_URL'
     ];
 
     protected $allowRequestParams = ['sectionId', 'sectionCode'];
-
-    public function __construct($params = [])
-    {
-        $this->params = $params;
-    }
 
     public static function forCatalogList()
     {
@@ -50,15 +45,9 @@ class SmartFilter extends \Lib\Component\ComponentBuilder
         return $self;
     }
 
-    public function getJsonResponse()
-    {
-        return $this->lowercaseKeys()->getDataKeysResponse($this->dataKeys);
-    }
-
-
     public function renderWebComponent()
     {
-        $data = $this->lowercaseKeys()->getDataKeys($this->dataKeys);
+        $data = $this->getData();
         $json = json_encode($data);
         echo "<smart-filter data-result='$json'></smart-filter>";
     }

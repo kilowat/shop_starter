@@ -5,12 +5,12 @@ if ($ajax) {
     require_once $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_before.php';
 
     if ($ajax === 'filter') {
-        Components\SmartFilter::forCatalogList()->getJsonResponse()->send();
+        Components\SmartFilter::forCatalogList()->sendDataResponse();
     }
 
     if ($ajax === 'products') {
         Components\SmartFilter::forCatalogList();
-        Components\CatalogSection::forCatalogList()->getResponse()->send();
+        Components\CatalogSection::forCatalogList()->sendHtmlResponse();
     }
 
     Bitrix\Main\Application::getInstance()->end();

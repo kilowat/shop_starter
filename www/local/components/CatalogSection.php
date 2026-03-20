@@ -109,25 +109,15 @@ class CatalogSection extends \Lib\Component\ComponentBuilder
         "USE_PRODUCT_QUANTITY" => "N"
     ];
 
-    protected $allowRequestParams = ['sectionId'];
+    protected $dataKeys = ['ID'];
 
-    public function __construct($params = [])
-    {
-        $this->params = $params;
-    }
+    protected $allowRequestParams = ['sectionId'];
 
     public static function forCatalogList(): static
     {
         $self = new static();
         $self->params['PAGE_ELEMENT_COUNT'] = '18';
         $self->setParamsFromRequest();
-        return $self;
-    }
-
-    public static function forFooter(): static
-    {
-        $self = new static();
-        $self->params['COUNT_ELEMENTS'] = 'N';
         return $self;
     }
 

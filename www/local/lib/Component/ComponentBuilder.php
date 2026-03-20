@@ -3,7 +3,6 @@ namespace Lib\Component;
 
 use Bitrix\Main\Application;
 use Bitrix\Main\Text\StringHelper;
-use Bitrix\Main\Engine\Response\Component;
 use Bitrix\Main\Engine\Response\ContentArea\Component as ContentCompnent;
 use Bitrix\Main\Engine\Response\Converter;
 
@@ -18,7 +17,13 @@ abstract class ComponentBuilder
     protected $allowRequestParams = [];
 
     /** @var int|null Формат конвертора для data */
-    protected ?int $converterFormat = null;
+    protected $converterFormat = Converter::KEYS
+        | Converter::RECURSIVE
+        | Converter::TO_LOWER;
+
+    /** @var array Ключи данных, которые нужно вернуть */
+    protected $dataKeys = [];
+
 
     public function getMergedParams(): array
     {
@@ -44,7 +49,7 @@ abstract class ComponentBuilder
         return $this;
     }
 
-    public function setTemplate($template)
+    public function setTemplate($template): static
     {
         $this->template = $template;
         return $this;
@@ -53,6 +58,12 @@ abstract class ComponentBuilder
     public function setDataConverterFormat(?int $format): static
     {
         $this->converterFormat = $format;
+        return $this;
+    }
+
+    public function setDataKeys(array $keys): static
+    {
+        $this->dataKeys = $keys;
         return $this;
     }
 
@@ -80,13 +91,13 @@ abstract class ComponentBuilder
         );
     }
 
-    public function getDataKeys(array $dataKeys = [])
+    public function getData(): array
     {
         $component = new ContentCompnent(
             $this->name,
             $this->template,
             $this->getMergedParams(),
-            $dataKeys
+            $this->dataKeys,
         );
 
         $component->getHtml();
@@ -96,9 +107,19 @@ abstract class ComponentBuilder
         return $this->convertData($data);
     }
 
-    public function getDataKeysResponse(array $dataKeys = [])
+    public function sendHtmlResponse()
     {
-        $data = $this->getDataKeys($dataKeys);
+        $this->getHtmlResponse()->send();
+    }
+
+    public function sendDataResponse()
+    {
+        $this->getDataResponse()->send();
+    }
+
+    private function getDataResponse()
+    {
+        $data = $this->getData();
 
         $json = json_encode([
             'status' => 'success',
@@ -112,33 +133,25 @@ abstract class ComponentBuilder
         return $currentResponse;
     }
 
-    public function getResponse(array $dataKeys = []): Component
+    private function getHtmlResponse()
     {
-        return new Component(
+        $component = new ContentCompnent(
             $this->name,
             $this->template,
             $this->getMergedParams(),
-            [],
-            $dataKeys
+            $this->dataKeys,
         );
-    }
 
-    public function sendResponse(array $dataKeys = [])
-    {
-        $this->getResponse($dataKeys)->send();
-    }
+        $html = $component->getHtml();
+        $json = json_encode([
+            'status' => 'success',
+            'data' => $html
+        ], JSON_UNESCAPED_UNICODE);
 
-    public function sendDataResponse(array $dataKeys = [])
-    {
-        $this->getDataKeysResponse($dataKeys)->send();
-    }
+        $currentResponse = Application::getInstance()->getContext()->getResponse();
+        $currentResponse->addHeader('Content-Type', 'application/json');
+        $currentResponse->setContent($json);
 
-    public function lowercaseKeys(): static
-    {
-        return $this->setDataConverterFormat(
-            Converter::KEYS
-            | Converter::RECURSIVE
-            | Converter::TO_LOWER
-        );
+        return $currentResponse;
     }
 }
