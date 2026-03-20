@@ -1,10 +1,10 @@
 <?php
 
-namespace Lib\Image;
+namespace Lib;
 
 use CFile;
 
-class Helper
+class Image
 {
     public static function get(
         int $fileId,
@@ -119,7 +119,7 @@ class Helper
 
             imagewebp($img, $webpPath, $quality);
 
-            imagedestroy($img);
+            unset($img);
         }
 
         return str_replace(

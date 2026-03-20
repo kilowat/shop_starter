@@ -1,7 +1,8 @@
 <?php
+
 namespace Components;
 
-class SmartFilter extends \Lib\Component\ComponentBuilder
+class SmartFilter extends \Lib\ComponentBuilder
 {
     protected $name = 'bitrix:catalog.smart.filter';
 

@@ -1,11 +1,11 @@
 <?php
 // ============================================================
-// 1. ПОЛНЫЙ ПРИМЕР СО ВСЕМИ НАСТРОЙКАМИ
+// \Lib\Image
 // ============================================================
 
 $fetch = CIBlockElement::GetByID(42)->Fetch();
 
-$imageRes = \Lib\Image\Helper::get($fetch['DETAIL_PICTURE'], [
+$imageRes = \Lib\Image::get($fetch['DETAIL_PICTURE'], [
     'main' => [
 
         // 🔹 Размеры
@@ -76,17 +76,17 @@ $imageRes = \Lib\Image\Helper::get($fetch['DETAIL_PICTURE'], [
     ],
 ]);
 
-echo \Lib\Image\Helper::show($imageRes['resizes']['main'], [
+echo \Lib\Image::show($imageRes['resizes']['main'], [
     'class' => 'img-fluid',
     'alt' => 'Основное изображение',
     'loading' => 'lazy',
 ]);
 
 // ============================================================
-// 2. НЕСКОЛЬКО ПРЕСЕТОВ
+// НЕСКОЛЬКО ПРЕСЕТОВ
 // ============================================================
 
-$imageRes = \Lib\Image\Helper::get($fetch['PREVIEW_PICTURE'], [
+$imageRes = \Lib\Image::get($fetch['PREVIEW_PICTURE'], [
     'preview' => [
         'width' => 400,
         'height' => 300,
@@ -99,21 +99,21 @@ $imageRes = \Lib\Image\Helper::get($fetch['PREVIEW_PICTURE'], [
     ],
 ]);
 
-echo \Lib\Image\Helper::show($imageRes['resizes']['preview'], [
+echo \Lib\Image::show($imageRes['resizes']['preview'], [
     'class' => 'card-img-top',
     'loading' => 'lazy',
 ]);
 
-echo \Lib\Image\Helper::show($imageRes['resizes']['full'], [
+echo \Lib\Image::show($imageRes['resizes']['full'], [
     'class' => 'detail-img',
 ]);
 
 
 // ============================================================
-// 3. ВОДЯНОЙ ЗНАК (картинка)
+//  ВОДЯНОЙ ЗНАК (картинка)
 // ============================================================
 
-$imageRes = \Lib\Image\Helper::get($fetch['DETAIL_PICTURE'], [
+$imageRes = \Lib\Image::get($fetch['DETAIL_PICTURE'], [
     'watermarked' => [
         'width' => 1000,
         'height' => 700,
@@ -127,17 +127,17 @@ $imageRes = \Lib\Image\Helper::get($fetch['DETAIL_PICTURE'], [
     ],
 ]);
 
-echo \Lib\Image\Helper::show($imageRes['resizes']['watermarked'], [
+echo \Lib\Image::show($imageRes['resizes']['watermarked'], [
     'class' => 'product-img',
     'alt' => $fetch['NAME'],
 ]);
 
 
 // ============================================================
-// 4. ВОДЯНОЙ ЗНАК (текст)
+// ВОДЯНОЙ ЗНАК (текст)
 // ============================================================
 
-$imageRes = \Lib\Image\Helper::get($fetch['DETAIL_PICTURE'], [
+$imageRes = \Lib\Image::get($fetch['DETAIL_PICTURE'], [
     'watermarked_text' => [
         'width' => 1000,
         'height' => 700,
@@ -154,13 +154,13 @@ $imageRes = \Lib\Image\Helper::get($fetch['DETAIL_PICTURE'], [
     ],
 ]);
 
-echo \Lib\Image\Helper::show($imageRes['resizes']['watermarked_text'], [
+echo \Lib\Image::show($imageRes['resizes']['watermarked_text'], [
     'class' => 'detail-img',
 ]);
 
 
 // ============================================================
-// 5. В ЦИКЛЕ
+//  В ЦИКЛЕ
 // ============================================================
 
 $res = CIBlockElement::GetList(
@@ -173,7 +173,7 @@ $res = CIBlockElement::GetList(
 
 while ($item = $res->Fetch()) {
 
-    $imageRes = \Lib\Image\Helper::get($item['PREVIEW_PICTURE'], [
+    $imageRes = \Lib\Image::get($item['PREVIEW_PICTURE'], [
         'card' => [
             'width' => 400,
             'height' => 300,
@@ -182,7 +182,7 @@ while ($item = $res->Fetch()) {
 
     echo "<div class='card'>";
 
-    echo \Lib\Image\Helper::show($imageRes['resizes']['card'], [
+    echo \Lib\Image::show($imageRes['resizes']['card'], [
         'class' => 'card-img',
         'alt' => htmlspecialchars($item['NAME']),
         'loading' => 'lazy',
@@ -195,10 +195,10 @@ while ($item = $res->Fetch()) {
 
 
 // ============================================================
-// 6. showById — короткий вариант
+// showById — короткий вариант
 // ============================================================
 
-echo \Lib\Image\Helper::showById(
+echo \Lib\Image::showById(
     $fetch['DETAIL_PICTURE'],
     [
         'width' => 800,
@@ -212,10 +212,10 @@ echo \Lib\Image\Helper::showById(
 
 
 // ============================================================
-// 7. Без WebP
+//  Без WebP
 // ============================================================
 
-$imageRes = \Lib\Image\Helper::get(
+$imageRes = \Lib\Image::get(
     $fetch['DETAIL_PICTURE'],
     [
         'main' => [
@@ -226,4 +226,4 @@ $imageRes = \Lib\Image\Helper::get(
     false
 );
 
-echo \Lib\Image\Helper::show($imageRes['resizes']['main']);
+echo \Lib\Image::show($imageRes['resizes']['main']);

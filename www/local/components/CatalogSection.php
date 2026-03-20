@@ -1,7 +1,8 @@
 <?php
+
 namespace Components;
 
-class CatalogSection extends \Lib\Component\ComponentBuilder
+class CatalogSection extends \Lib\ComponentBuilder
 {
     protected $name = 'bitrix:catalog.section';
     protected $defaultParams = [
