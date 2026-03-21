@@ -4,7 +4,7 @@ namespace Lib;
 
 class Asset
 {
-    public static function getPath(string $src, bool|string $domainOption = true): string|false
+    public static function path(string $src, bool|string $domainOption = false): string|false
     {
         $timestamp = filemtime($src);
         $versionedPath = '/' . $src . '?v=' . $timestamp;

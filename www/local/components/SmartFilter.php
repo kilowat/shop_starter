@@ -6,6 +6,8 @@ class SmartFilter extends \Lib\ComponentBuilder
 {
     protected $name = 'bitrix:catalog.smart.filter';
 
+    protected $template = 'custom';
+
     protected $defaultParams = [
         "CACHE_GROUPS" => "Y",
         "CACHE_TIME" => "36000000",
@@ -34,23 +36,15 @@ class SmartFilter extends \Lib\ComponentBuilder
     protected $dataKeys = [
         'ITEMS',
         'PRICES',
-        'FILTER_URL'
     ];
 
     protected $allowRequestParams = ['sectionId', 'sectionCode'];
 
-    public static function forCatalogList()
+    public static function catalogList()
     {
         $self = new static();
         $self->setParamsFromRequest();
         return $self;
-    }
-
-    public function renderWebComponent()
-    {
-        $data = $this->getData();
-        $json = json_encode($data);
-        echo "<smart-filter data-result='$json'></smart-filter>";
     }
 
     public function sectionId($value)

@@ -15,3 +15,5 @@
 use Bitrix\Iblock\SectionPropertyTable;
 
 $this->setFrameMode(true); ?>
+
+<smart-filter></smart-filter>

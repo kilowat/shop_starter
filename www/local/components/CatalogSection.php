@@ -114,7 +114,7 @@ class CatalogSection extends \Lib\ComponentBuilder
 
     protected $allowRequestParams = ['sectionId'];
 
-    public static function forCatalogList(): static
+    public static function catalogList(): static
     {
         $self = new static();
         $self->params['PAGE_ELEMENT_COUNT'] = '18';

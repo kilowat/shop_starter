@@ -1,3 +1,3 @@
-defComponent('smart-filter', (ctx) => {
-    console.log('def');
+defComponent('smart-filter', ({ html }) => {
+    return html`smart-filter`;
 })
