@@ -6,7 +6,7 @@ $APPLICATION->SetTitle("О компании");
 ?>
 <main class="container">
     <h1><?php $APPLICATION->ShowTitle(); ?></h1>
-    <? Components\CatalogSection::forCatalogList()->render() ?>
+    <? Components\CatalogSection::catalogList()->render() ?>
     <p>
         Это простая страница шаблона Bitrix.
     </p>

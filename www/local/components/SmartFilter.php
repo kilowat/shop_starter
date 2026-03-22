@@ -36,6 +36,7 @@ class SmartFilter extends \Lib\ComponentBuilder
     protected $dataKeys = [
         'ITEMS',
         'PRICES',
+        'FILTER_URL',
     ];
 
     protected $allowRequestParams = ['sectionId', 'sectionCode'];

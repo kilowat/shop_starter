@@ -18,6 +18,7 @@ require($_SERVER["DOCUMENT_ROOT"] . "/bitrix/header.php");
 $APPLICATION->SetTitle("Test");
 
 Components\SmartFilter::catalogList()->render();
+Components\SmartFilter::catalogList()->setTemplate('.default')->render();
 Components\CatalogSection::catalogList()->render();
 
 ?><? require($_SERVER["DOCUMENT_ROOT"] . "/bitrix/footer.php"); ?>
