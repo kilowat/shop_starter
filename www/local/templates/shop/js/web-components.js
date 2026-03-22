@@ -1,3 +1,5 @@
-defComponent('smart-filter', ({ html }) => {
-    return html`smart-filter`;
+
+defComponent('smart-filter', ({ html, prop, store }) => {
+
+    return html`smart-filter ${smartFilterResult}`;
 })

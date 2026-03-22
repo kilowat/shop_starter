@@ -110,7 +110,7 @@ class CatalogSection extends \Lib\ComponentBuilder
         "USE_PRODUCT_QUANTITY" => "N"
     ];
 
-    protected $dataKeys = ['ID'];
+    protected $dataKeys = ['ID', 'NAV_STRING'];
 
     protected $allowRequestParams = ['sectionId'];
 

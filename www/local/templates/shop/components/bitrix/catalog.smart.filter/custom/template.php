@@ -14,6 +14,19 @@
 
 use Bitrix\Iblock\SectionPropertyTable;
 
-$this->setFrameMode(true); ?>
+/*
 
+	public function renderWebComponent()
+	{
+		\Bitrix\Main\Page\Asset::getInstance()->addString(
+			'<script>window.__CATALOG_SMART_FILTER__ = ' . \Bitrix\Main\Web\Json::encode($this->getData()) . ';</script>'
+		);
+
+		echo '<smart-filter ></smart-filter>';
+	}
+
+*/
+
+$this->setFrameMode(true); ?>
+<script></script>
 <smart-filter></smart-filter>
