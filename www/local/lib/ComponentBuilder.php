@@ -61,7 +61,7 @@ abstract class ComponentBuilder
 
     }
 
-    public function sendResponse()
+    public function sendResponse($showHtml = true)
     {
         $component = new ContentComponent(
             $this->name,
@@ -70,8 +70,10 @@ abstract class ComponentBuilder
             $this->dataKeys,
         );
 
+        $htmlResult = $component->getHtml();
+
         $response = AjaxJson::createSuccess([
-            'html' => $component->getHtml(),
+            'html' => $showHtml ? $htmlResult : null,
             'result' => $component->getSectionData(),
         ]);
 
