@@ -1,6 +1,6 @@
 <?
 Bitrix\Main\Page\Asset::getInstance()->addJs(SITE_TEMPLATE_PATH . "/lib/signa/signa.min.js");
-Bitrix\Main\Page\Asset::getInstance()->addJs(SITE_TEMPLATE_PATH . "/js/web-components.js");
+Bitrix\Main\Page\Asset::getInstance()->addJs(SITE_TEMPLATE_PATH . "/js/web-components/smartfilter.js");
 ?>
 <!DOCTYPE html>
 <html lang="ru">
