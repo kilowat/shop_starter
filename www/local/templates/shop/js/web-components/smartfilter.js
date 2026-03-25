@@ -1,7 +1,7 @@
-defStore('smartFilter', ({ signal, computed }) => {
-    const result = signal(window.__SMART_FILTER__ ?? { 'PRICES': {}, 'ITEMS': {} });
+defStore('smartFilter', ({ signal, computed, effect }) => {
+    const result = signal(window.__SMART_FILTER__ ?? { 'PRICES': {}, 'ITEMS': {}, 'FILTER_URL': '' });
 
-    const payload = signal([]);
+    const isLoading = signal(false);
 
     const prices = computed(() =>
         Object.entries(result.value.ITEMS).reduce((acc, [key, value]) => {
@@ -17,17 +17,27 @@ defStore('smartFilter', ({ signal, computed }) => {
         }, {})
     );
 
+    const fetchResult = async () => {
+        try {
+            const response = await fetch(location.href, { headers: { 'ajax': 'filter' } });
+            const { data } = await response.json();
+            result.value = data.result;
+        } catch (e) {
+            console.error(e);
+        } finally {
+            isLoading.value = false;
+        }
+    }
+    fetchResult();
+
     return {
-        result,
-        payload,
         prices,
-        items
+        items,
     }
 });
 
 defComponent('smart-filter', ({ html, prop, store }) => {
     const { items, prices } = store('smartFilter');
-    console.log(prices.value);
     const buildFilters = () => html`
     
     `
