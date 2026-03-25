@@ -17,11 +17,15 @@ defStore('smartFilter', ({ signal, computed, effect }) => {
         }, {})
     );
 
+
+
     const fetchResult = async () => {
         try {
+            isLoading.value = true;
             const response = await fetch(location.href, { headers: { 'ajax': 'filter' } });
             const { data } = await response.json();
             result.value = data.result;
+            console.log(result.value);
         } catch (e) {
             console.error(e);
         } finally {
@@ -33,6 +37,7 @@ defStore('smartFilter', ({ signal, computed, effect }) => {
     return {
         prices,
         items,
+        isLoading,
     }
 });
 
