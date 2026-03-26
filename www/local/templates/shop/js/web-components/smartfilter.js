@@ -1,23 +1,33 @@
-defStore('smartFilter', ({ signal, computed, effect }) => {
+defStore('smartFilter', ({ signal, computed, effect, store }) => {
     const result = signal(window.__SMART_FILTER__ ?? { 'PRICES': {}, 'ITEMS': {}, 'FILTER_URL': '' });
 
     const isLoading = signal(false);
 
+    const displayTypes = {
+        NUMBERS_WITH_SLIDER: 'A',
+        NUMBERS: 'B',
+        CHECKBOXES_WITH_PICTURES: 'G',
+        CHECKBOXES_WITH_PICTURES_AND_LABELS: 'H',
+        DROPDOWN: 'P',
+        DROPDOWN_WITH_PICTURES_AND_LABELS: 'R',
+        RADIO_BUTTONS: 'K',
+        CALENDAR: 'U',
+    }
+
     const prices = computed(() =>
-        Object.entries(result.value.ITEMS).reduce((acc, [key, value]) => {
-            if (key in result.value.PRICES) acc[key] = value;
-            return acc;
-        }, {})
+        Object.entries(result.value.ITEMS)
+            .filter(([key]) => key in result.value.PRICES)
+            .map(([key, item]) => item)
     );
 
     const items = computed(() =>
-        Object.entries(result.value.ITEMS).reduce((acc, [key, value]) => {
-            if (!(key in result.value.PRICES)) acc[key] = value;
-            return acc;
-        }, {})
+        Object.entries(result.value.ITEMS)
+            .filter(([key, item]) =>
+                !(key in result.value.PRICES) &&
+                Object.keys(item.VALUES || {}).length > 0
+            )
+            .map(([key, item]) => item)
     );
-
-
 
     const fetchResult = async () => {
         try {
@@ -32,23 +42,35 @@ defStore('smartFilter', ({ signal, computed, effect }) => {
             isLoading.value = false;
         }
     }
-    fetchResult();
 
     return {
+        result,
         prices,
         items,
         isLoading,
+        displayTypes,
     }
 });
 
-defComponent('smart-filter', ({ html, prop, store }) => {
-    const { items, prices } = store('smartFilter');
-    const buildFilters = () => html`
-    
-    `
+defComponent('smart-filter', ({ html, store }) => {
+    const { items, prices, displayTypes } = store('smartFilter');
+
+    const buildInputRow = (item) => {
+        switch (item.DISPLAY_TYPE) {
+            default: return html`checkobx`
+        }
+    }
+
+    const buildFilterRow = (item) => html`
+        <div class="filter-row">
+            <pre>${JSON.stringify(item)}</pre>
+            ${buildInputRow(item)}
+        </div>
+    `;
 
     return () => html`
         <div class="smart-filter">
-            ${buildFilters()}
+            ${items.value.map(buildFilterRow)}
         </div>`;
 })
+
