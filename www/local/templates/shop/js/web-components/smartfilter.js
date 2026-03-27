@@ -1,5 +1,11 @@
-defStore('smartFilter', ({ signal, computed, effect, store }) => {
-    const result = signal(window.__SMART_FILTER__ ?? { 'PRICES': {}, 'ITEMS': {}, 'FILTER_URL': '' });
+defStore('smartFilter', ({ signal, computed, effect }) => {
+    const result = signal(window.__SMART_FILTER__ ?? {
+        PRICES: {},
+        ITEMS: {},
+        FILTER_URL: ''
+    });
+
+    const checkedState = signal([]); // [{ groupCode, valueId }]
 
     const isLoading = signal(false);
 
@@ -12,13 +18,7 @@ defStore('smartFilter', ({ signal, computed, effect, store }) => {
         DROPDOWN_WITH_PICTURES_AND_LABELS: 'R',
         RADIO_BUTTONS: 'K',
         CALENDAR: 'U',
-    }
-
-    const prices = computed(() =>
-        Object.entries(result.value.ITEMS)
-            .filter(([key]) => key in result.value.PRICES)
-            .map(([key, item]) => item)
-    );
+    };
 
     const items = computed(() =>
         Object.entries(result.value.ITEMS)
@@ -26,69 +26,188 @@ defStore('smartFilter', ({ signal, computed, effect, store }) => {
                 !(key in result.value.PRICES) &&
                 Object.keys(item.VALUES || {}).length > 0
             )
-            .map(([key, item]) => item)
+            .map(([_, item]) => item)
     );
 
+    const prices = computed(() =>
+        Object.entries(result.value.ITEMS)
+            .filter(([key]) => key in result.value.PRICES)
+            .map(([_, item]) => item)
+    );
+
+    // --- INIT из сервера ---
+    const initCheckedState = () => {
+        const state = [];
+
+        items.value.forEach(item => {
+            Object.values(item.VALUES || {}).forEach(value => {
+                if (value.CHECKED) {
+                    state.push({
+                        groupCode: item.CODE,
+                        valueId: value.CONTROL_ID
+                    });
+                }
+            });
+        });
+
+        checkedState.value = state;
+    };
+
+    // --- toggle ---
+    const toggleCheck = (groupCode, valueId) => {
+        const index = checkedState.value.findIndex(
+            v => v.groupCode === groupCode && v.valueId === valueId
+        );
+
+        if (index > -1) {
+            checkedState.value.splice(index, 1);
+        } else {
+            checkedState.value.push({ groupCode, valueId });
+        }
+    };
+
+    // --- helper ---
+    const isChecked = (groupCode, valueId) =>
+        checkedState.value.some(v =>
+            v.groupCode === groupCode && v.valueId === valueId
+        );
+
+    // --- selectedGroup ---
+    const selectedGroup = computed(() => {
+        const groups = [];
+
+        // --- 1. Обычные ITEMS (checkbox, radio и т.д.)
+        items.value.forEach(item => {
+            const values = Object.values(item.VALUES || {});
+
+            const serverSelected = values.filter(v => v.CHECKED);
+
+            const localSelected = values.filter(v =>
+                checkedState.value.some(s =>
+                    s.groupCode === item.CODE && s.valueId === v.CONTROL_ID
+                )
+            );
+
+            const merged = [...serverSelected];
+
+            localSelected.forEach(v => {
+                if (!merged.find(m => m.CONTROL_ID === v.CONTROL_ID)) {
+                    merged.push(v);
+                }
+            });
+
+            if (merged.length > 0) {
+                groups.push({
+                    group: item,
+                    values: merged
+                });
+            }
+        });
+
+        // --- 2. ЦЕНЫ (ВАЖНО!)
+        prices.value.forEach(price => {
+            const min = price.VALUES?.MIN;
+            const max = price.VALUES?.MAX;
+
+            const hasMin = min?.VALUE && min.VALUE !== '';
+            const hasMax = max?.VALUE && max.VALUE !== '';
+
+            if (hasMin || hasMax) {
+                groups.push({
+                    group: price,
+                    values: [
+                        {
+                            type: 'range',
+                            min: min?.VALUE || null,
+                            max: max?.VALUE || null,
+                            currency: min?.CURRENCY || max?.CURRENCY || null
+                        }
+                    ]
+                });
+            }
+        });
+
+        return groups;
+    });
+
+    // --- следим за result ---
+    effect(() => {
+        initCheckedState();
+    });
+
+    // --- запрос ---
     const fetchResult = async () => {
         try {
             isLoading.value = true;
-            const response = await fetch(location.href, { headers: { 'ajax': 'filter' } });
+
+            const response = await fetch(location.href, {
+                headers: { ajax: 'filter' }
+            });
+
             const { data } = await response.json();
+
             result.value = data.result;
-            console.log(result.value);
+
+            // state пересоберётся через effect
+
         } catch (e) {
             console.error(e);
         } finally {
             isLoading.value = false;
         }
-    }
+    };
 
     return {
         result,
-        prices,
         items,
+        prices,
+        checkedState,
+        selectedGroup,
+        toggleCheck,
+        isChecked,
+        fetchResult,
         isLoading,
         displayTypes,
-    }
+    };
 });
 
 defComponent('smart-filter', ({ html, store }) => {
-    const { items, displayTypes } = store('smartFilter');
-    console.log(items.value);
+    const {
+        items,
+        displayTypes,
+        toggleCheck,
+        isChecked,
+        selectedGroup
+    } = store('smartFilter');
+
     const getValues = (item) => Object.values(item.VALUES || {});
 
-    const buildRangeSlider = (item) => html`
-        <div class="filter-input filter--range-slider">
-            <input type="text" placeholder="min" />
-            <input type="text" placeholder="max" />
-            <div class="slider"></div>
-        </div>
-    `;
-
-    const buildRange = (item) => html`
-        <div class="filter-input filter--range">
-            <input type="text" placeholder="min" />
-            <input type="text" placeholder="max" />
-        </div>
-    `;
-
-    const buildCheckboxPictures = (item) => html`
-        <div class="filter-input filter--checkbox-pictures">
+    const buildCheckbox = (item) => html`
+        <div class="filter-input filter--checkbox">
             ${getValues(item).map(value => html`
                 <label>
-                    <input type="checkbox" />
-                    <span class="picture"></span>
+                    <input 
+                        type="checkbox"
+                        name="${value.CONTROL_NAME}"
+                        ?checked=${isChecked(item.CODE, value.CONTROL_ID)}
+                        ?disabled=${value.DISABLED}
+                        @change=${() => toggleCheck(item.CODE, value.CONTROL_ID)}
+                    />
+                    <span>${value.VALUE}</span>
                 </label>
             `)}
         </div>
     `;
 
-    const buildCheckboxPicturesLabels = (item) => html`
-        <div class="filter-input filter--checkbox-pictures-labels">
+    const buildRadio = (item) => html`
+        <div class="filter-input filter--radio">
             ${getValues(item).map(value => html`
                 <label>
-                    <input type="checkbox" />
-                    <span class="picture"></span>
+                    <input 
+                        type="radio"
+                        name="${item.CODE}"
+                        ?checked=${value.CHECKED}
+                    />
                     <span>${value.VALUE}</span>
                 </label>
             `)}
@@ -99,69 +218,26 @@ defComponent('smart-filter', ({ html, store }) => {
         <div class="filter-input filter--dropdown">
             <select>
                 ${getValues(item).map(value => html`
-                    <option>${value.VALUE}</option>
+                    <option ?selected=${value.CHECKED}>
+                        ${value.VALUE}
+                    </option>
                 `)}
             </select>
         </div>
     `;
 
-    const buildDropdownCustom = (item) => html`
-        <div class="filter-input filter--dropdown-custom">
-            <div class="dropdown">
-                ${getValues(item).map(value => html`
-                    <div class="dropdown-item">
-                        <span class="picture"></span>
-                        <span>${value.VALUE}</span>
-                    </div>
-                `)}
-            </div>
-        </div>
-    `;
-
-    const buildRadio = (item) => html`
-        <div class="filter-input filter--radio">
-            ${getValues(item).map(value => html`
-                <label>
-                    <input type="radio" name="${item.CODE}" />
-                    <span>${value.VALUE}</span>
-                </label>
-            `)}
-        </div>
-    `;
-
-    const buildCalendar = (item) => html`
-        <div class="filter-input filter--calendar">
-            <input type="date" />
-            <input type="date" />
-        </div>
-    `;
-
-    const buildCheckbox = (item) => html`
-        <div class="filter-input filter--checkbox">
-            ${getValues(item).map(value => html`
-                <label for="${value.CONTROL_ID}">
-                    <input 
-                        type="checkbox"
-                        name="${value.CONTROL_NAME}"
-                        id="${value.CONTROL_ID}"
-                        ?checked=${value.CHECKED}
-                        ?disabled=${value.DISABLED}
-                    />
-                    <span>${value.VALUE}</span>
-                </label>
-            `)}
+    const buildRange = () => html`
+        <div class="filter-input filter--range">
+            <input type="text" placeholder="min" />
+            <input type="text" placeholder="max" />
         </div>
     `;
 
     const builders = {
-        [displayTypes.NUMBERS_WITH_SLIDER]: buildRangeSlider,
+        [displayTypes.NUMBERS_WITH_SLIDER]: buildRange,
         [displayTypes.NUMBERS]: buildRange,
-        [displayTypes.CHECKBOXES_WITH_PICTURES]: buildCheckboxPictures,
-        [displayTypes.CHECKBOXES_WITH_PICTURES_AND_LABELS]: buildCheckboxPicturesLabels,
-        [displayTypes.DROPDOWN]: buildDropdown,
-        [displayTypes.DROPDOWN_WITH_PICTURES_AND_LABELS]: buildDropdownCustom,
         [displayTypes.RADIO_BUTTONS]: buildRadio,
-        [displayTypes.CALENDAR]: buildCalendar,
+        [displayTypes.DROPDOWN]: buildDropdown,
         default: buildCheckbox,
     };
 
@@ -170,16 +246,48 @@ defComponent('smart-filter', ({ html, store }) => {
         return builder(item);
     };
 
-    const buildFilterRow = (item) => html`
-        <div class="filter-row">
-            <div class="filter-name">${item.NAME}</div>
-            ${buildInput(item)}
-        </div>
-    `;
+    const buildSelected = () => html`
+    <div class="selected-filter">
+        ${selectedGroup.value.map(group => html`
+            <div class="selected-group">
+                <strong>${group.group.NAME}</strong>
+
+                ${group.values.map(value => {
+        // --- ЦЕНЫ (range)
+        if (value.type === 'range') {
+            return html`
+                                    <button>
+                                        ${value.min ? `от ${value.min}` : ''}
+                                        ${value.max ? ` до ${value.max}` : ''}
+                                        ${value.currency ? ` ${value.currency}` : ''}
+                                    </button>
+                                `;
+        }
+
+
+        return html`
+                                <button>
+                                    ${value.VALUE}
+                                </button>
+                            `;
+    })}
+                    </div>
+                `)}
+            </div>
+        `;
 
     return () => html`
         <div class="smart-filter">
-            ${items.value.map(buildFilterRow)}
+
+            ${buildSelected()}
+
+            ${items.value.map(item => html`
+                <div class="filter-row">
+                    <div class="filter-name">${item.NAME}</div>
+                    ${buildInput(item)}
+                </div>
+            `)}
+
         </div>
     `;
 });
