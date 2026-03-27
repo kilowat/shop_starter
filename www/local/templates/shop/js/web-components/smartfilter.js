@@ -58,12 +58,15 @@ defStore('smartFilter', ({ signal, computed, effect }) => {
         const index = checkedState.value.findIndex(
             v => v.groupCode === groupCode && v.valueId === valueId
         );
-
+        const newValue = [...checkedState.value];
         if (index > -1) {
-            checkedState.value.splice(index, 1);
+            newValue.splice(index, 1);
+            checkedState.value = newValue;
         } else {
-            checkedState.value.push({ groupCode, valueId });
+            newValue.push({ groupCode, valueId });
+            checkedState.value = newValue;
         }
+        console.log(checkedState.value);
     };
 
     // --- helper ---
@@ -176,6 +179,7 @@ defComponent('smart-filter', ({ html, store }) => {
         items,
         displayTypes,
         toggleCheck,
+        checkedState,
         isChecked,
         selectedGroup
     } = store('smartFilter');
@@ -251,17 +255,16 @@ defComponent('smart-filter', ({ html, store }) => {
         ${selectedGroup.value.map(group => html`
             <div class="selected-group">
                 <strong>${group.group.NAME}</strong>
-
                 ${group.values.map(value => {
-        // --- ЦЕНЫ (range)
+
         if (value.type === 'range') {
             return html`
-                                    <button>
-                                        ${value.min ? `от ${value.min}` : ''}
-                                        ${value.max ? ` до ${value.max}` : ''}
-                                        ${value.currency ? ` ${value.currency}` : ''}
-                                    </button>
-                                `;
+                <button>
+                    ${value.min ? `от ${value.min}` : ''}
+                    ${value.max ? ` до ${value.max}` : ''}
+                    ${value.currency ? ` ${value.currency}` : ''}
+                </button>
+            `;
         }
 
 
@@ -278,7 +281,7 @@ defComponent('smart-filter', ({ html, store }) => {
 
     return () => html`
         <div class="smart-filter">
-
+            ${JSON.stringify(checkedState.value)}
             ${buildSelected()}
 
             ${items.value.map(item => html`
