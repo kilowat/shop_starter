@@ -13,6 +13,7 @@ use Bitrix\Sale\DiscountCouponsManager;
 use Bitrix\Sale\PriceMaths;
 use CFile;
 use Bitrix\Main\Config\Option;
+
 class BasketService
 {
     private Sale\Basket $basket;
@@ -246,7 +247,7 @@ class BasketService
             // Формируем правильную детальную ссылку
             $detailUrl = $this->buildDetailUrl($element, $parentId, $elements);
 
-            $resultItems[] = array_merge([
+            $resultItems[] = [
                 'id' => $item->getId(),
                 'basket_code' => $basketCode,
                 'product_id' => $productId,
@@ -263,7 +264,8 @@ class BasketService
                 'measure_ratio' => $ratioData[$basketCode]['MEASURE_RATIO'] ?? 1,
                 'available_quantity' => $this->getAvailableQuantity($item),
                 'props' => $this->getItemProperties($item),
-            ], $this->buildPriceData($item));
+                'price' => $this->buildPriceData($item),
+            ];
         }
 
         return [
@@ -292,13 +294,10 @@ class BasketService
         return [
             'count' => $this->getTotalQuantity(),
             'orderable_count' => $this->getOrderableQuantity(),
-
-            'price' => [
-                'base' => $basePrice,
-                'base_formatted' => $this->formatPrice($basePrice, $currency),
-                'final' => $finalPrice,
-                'final_formatted' => $this->formatPrice($finalPrice, $currency),
-            ],
+            'base' => $basePrice,
+            'base_formatted' => $this->formatPrice($basePrice, $currency),
+            'final' => $finalPrice,
+            'final_formatted' => $this->formatPrice($finalPrice, $currency),
 
             'discount' => [
                 'value' => $discountValue,
@@ -415,7 +414,7 @@ class BasketService
 
         $arSize = ["width" => 250, "height" => 250];
         $resizeType = BX_RESIZE_IMAGE_PROPORTIONAL;
-        $bInitSizes = true; 
+        $bInitSizes = true;
         $arFilters = [];
 
         $resizedImage = \CFile::ResizeImageGet(
@@ -425,7 +424,7 @@ class BasketService
             $bInitSizes,
             $arFilters
         );
-        
+
         $originImage =   \CFile::GetByID($imageId)?->Fetch() ?? [];
 
         return [
