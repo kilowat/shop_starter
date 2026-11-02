@@ -28,7 +28,7 @@ $config = [
     // Что сканировать (пути от корня сайта)
     'source_dirs' => [
         '/local/controllers',
-        '/local/src/Swagger/Schemas',
+        '/local/src/Swagger',
     ],
 
     // Маска файлов для сканирования

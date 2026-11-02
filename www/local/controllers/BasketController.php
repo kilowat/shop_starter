@@ -6,7 +6,6 @@ use App\Basket\BasketService;
 use Bitrix\Main\Engine\ActionFilter;
 use Bitrix\Main\Engine\Controller;
 use Bitrix\Main\Error;
-use OpenApi\Attributes as OA;
 
 final class BasketController extends Controller
 {
@@ -23,18 +22,19 @@ final class BasketController extends Controller
     {
         $post = [
             new ActionFilter\HttpMethod([
-                ActionFilter\HttpMethod::METHOD_POST
-            ])
+                ActionFilter\HttpMethod::METHOD_POST,
+            ]),
         ];
 
         return [
             'show' => [
                 'prefilters' => [
                     new ActionFilter\HttpMethod([
-                        ActionFilter\HttpMethod::METHOD_GET
-                    ])
+                        ActionFilter\HttpMethod::METHOD_GET,
+                    ]),
                 ],
             ],
+
             'add' => ['prefilters' => $post],
             'updateQuantity' => ['prefilters' => $post],
             'setDelay' => ['prefilters' => $post],
@@ -45,72 +45,17 @@ final class BasketController extends Controller
         ];
     }
 
-    #[OA\Get(
-        path: '/api/basket',
-        operationId: 'basketShow',
-        summary: 'Получить корзину',
-        tags: ['Basket'],
-        responses: [
-            new OA\Response(
-                response: 200,
-                description: 'Успешный ответ',
-                content: new OA\JsonContent(
-                    ref: '#/components/schemas/BasketResponse'
-                )
-            )
-        ]
-    )]
+    /**
+     * Получить корзину.
+     */
     public function showAction(): array
     {
         return $this->basket->getData();
     }
 
-    #[OA\Post(
-        path: '/api/basket/items',
-        operationId: 'basketAdd',
-        summary: 'Добавить товар',
-        tags: ['Basket'],
-        requestBody: new OA\RequestBody(
-            required: true,
-            content: new OA\JsonContent(
-                required: ['productId'],
-                properties: [
-                    new OA\Property(
-                        property: 'productId',
-                        type: 'integer',
-                        example: 101
-                    ),
-                    new OA\Property(
-                        property: 'quantity',
-                        type: 'number',
-                        format: 'float',
-                        default: 1
-                    ),
-                    new OA\Property(
-                        property: 'props',
-                        type: 'array',
-                        items: new OA\Items(type: 'object')
-                    ),
-                ]
-            )
-        ),
-        responses: [
-            new OA\Response(
-                response: 200,
-                description: 'Успешный ответ',
-                content: new OA\JsonContent(
-                    ref: '#/components/schemas/BasketResponse'
-                )
-            ),
-            new OA\Response(
-                response: 400,
-                description: 'Ошибка запроса',
-                content: new OA\JsonContent(
-                    ref: '#/components/schemas/ApiError'
-                )
-            ),
-        ]
-    )]
+    /**
+     * Добавить товар.
+     */
     public function addAction(
         int $productId,
         float $quantity = 1,
@@ -129,47 +74,9 @@ final class BasketController extends Controller
         return $this->basket->getData();
     }
 
-    #[OA\Post(
-        path: '/api/basket/items/quantity',
-        operationId: 'basketUpdateQuantity',
-        summary: 'Изменить количество',
-        tags: ['Basket'],
-        requestBody: new OA\RequestBody(
-            required: true,
-            content: new OA\JsonContent(
-                required: ['basketId', 'quantity'],
-                properties: [
-                    new OA\Property(
-                        property: 'basketId',
-                        type: 'integer',
-                        example: 15
-                    ),
-                    new OA\Property(
-                        property: 'quantity',
-                        type: 'number',
-                        format: 'float',
-                        example: 3
-                    ),
-                ]
-            )
-        ),
-        responses: [
-            new OA\Response(
-                response: 200,
-                description: 'Успешный ответ',
-                content: new OA\JsonContent(
-                    ref: '#/components/schemas/BasketResponse'
-                )
-            ),
-            new OA\Response(
-                response: 400,
-                description: 'Ошибка запроса',
-                content: new OA\JsonContent(
-                    ref: '#/components/schemas/ApiError'
-                )
-            ),
-        ]
-    )]
+    /**
+     * Изменить количество товара.
+     */
     public function updateQuantityAction(
         int $basketId,
         float $quantity
@@ -187,39 +94,9 @@ final class BasketController extends Controller
         return $this->basket->getData();
     }
 
-    #[OA\Post(
-        path: '/api/basket/items/delay',
-        operationId: 'basketSetDelay',
-        summary: 'Отложить / вернуть товар',
-        tags: ['Basket'],
-        requestBody: new OA\RequestBody(
-            required: true,
-            content: new OA\JsonContent(
-                required: ['basketId'],
-                properties: [
-                    new OA\Property(
-                        property: 'basketId',
-                        type: 'integer',
-                        example: 15
-                    ),
-                    new OA\Property(
-                        property: 'delay',
-                        type: 'boolean',
-                        default: true
-                    ),
-                ]
-            )
-        ),
-        responses: [
-            new OA\Response(
-                response: 200,
-                description: 'Успешный ответ',
-                content: new OA\JsonContent(
-                    ref: '#/components/schemas/BasketResponse'
-                )
-            )
-        ]
-    )]
+    /**
+     * Отложить или вернуть товар.
+     */
     public function setDelayAction(
         int $basketId,
         bool $delay = true
@@ -229,34 +106,9 @@ final class BasketController extends Controller
         return $this->basket->getData();
     }
 
-    #[OA\Post(
-        path: '/api/basket/items/remove',
-        operationId: 'basketRemove',
-        summary: 'Удалить позицию',
-        tags: ['Basket'],
-        requestBody: new OA\RequestBody(
-            required: true,
-            content: new OA\JsonContent(
-                required: ['basketId'],
-                properties: [
-                    new OA\Property(
-                        property: 'basketId',
-                        type: 'integer',
-                        example: 15
-                    )
-                ]
-            )
-        ),
-        responses: [
-            new OA\Response(
-                response: 200,
-                description: 'Успешный ответ',
-                content: new OA\JsonContent(
-                    ref: '#/components/schemas/BasketResponse'
-                )
-            )
-        ]
-    )]
+    /**
+     * Удалить позицию из корзины.
+     */
     public function removeAction(int $basketId): array
     {
         $this->basket->removeById($basketId);
@@ -264,21 +116,9 @@ final class BasketController extends Controller
         return $this->basket->getData();
     }
 
-    #[OA\Post(
-        path: '/api/basket/clear',
-        operationId: 'basketClear',
-        summary: 'Очистить корзину',
-        tags: ['Basket'],
-        responses: [
-            new OA\Response(
-                response: 200,
-                description: 'Успешный ответ',
-                content: new OA\JsonContent(
-                    ref: '#/components/schemas/BasketResponse'
-                )
-            )
-        ]
-    )]
+    /**
+     * Очистить корзину.
+     */
     public function clearAction(): array
     {
         $this->basket->clear();
@@ -286,71 +126,23 @@ final class BasketController extends Controller
         return $this->basket->getData();
     }
 
-    #[OA\Post(
-        path: '/api/basket/coupon',
-        operationId: 'basketApplyCoupon',
-        summary: 'Применить купон (пустая строка очищает купоны)',
-        tags: ['Basket'],
-        requestBody: new OA\RequestBody(
-            required: true,
-            content: new OA\JsonContent(
-                required: ['coupon'],
-                properties: [
-                    new OA\Property(
-                        property: 'coupon',
-                        type: 'string',
-                        example: 'SALE2026'
-                    )
-                ]
-            )
-        ),
-        responses: [
-            new OA\Response(
-                response: 200,
-                description: 'Успешный ответ',
-                content: new OA\JsonContent(
-                    ref: '#/components/schemas/BasketResponse'
-                )
-            )
-        ]
-    )]
+    /**
+     * Применить купон.
+     *
+     * Пустая строка очищает купоны.
+     */
     public function applyCouponAction(string $coupon = ''): array
     {
         $result = $this->basket->applyCoupon($coupon);
 
         return $this->basket->getData() + [
-            'coupon_result' => $result
+            'coupon_result' => $result,
         ];
     }
 
-    #[OA\Post(
-        path: '/api/basket/coupon/remove',
-        operationId: 'basketRemoveCoupon',
-        summary: 'Удалить купон',
-        tags: ['Basket'],
-        requestBody: new OA\RequestBody(
-            required: true,
-            content: new OA\JsonContent(
-                required: ['coupon'],
-                properties: [
-                    new OA\Property(
-                        property: 'coupon',
-                        type: 'string',
-                        example: 'SALE2026'
-                    )
-                ]
-            )
-        ),
-        responses: [
-            new OA\Response(
-                response: 200,
-                description: 'Успешный ответ',
-                content: new OA\JsonContent(
-                    ref: '#/components/schemas/BasketResponse'
-                )
-            )
-        ]
-    )]
+    /**
+     * Удалить купон.
+     */
     public function removeCouponAction(string $coupon): array
     {
         $this->basket->removeCoupon($coupon);
