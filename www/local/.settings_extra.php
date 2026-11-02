@@ -9,7 +9,8 @@ return [
         'value' => [
             'config' => [
                 'web.php',
-                'api.php'
+                'api.php',
+                'swagger.php',
             ],
         ],
         'readonly' => false,

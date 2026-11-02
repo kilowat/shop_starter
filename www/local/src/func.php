@@ -1,23 +1,37 @@
 <?php
 
-use Helper\AjaxHtmlResponse;
-use Helper\Application;
-use Helper\Asset;
-use Helper\Image;
-use Helper\Slot;
-use Helper\File;
-use Helper\Debug;
-use Helper\DataStorage;
+use App\Helper\AjaxHtmlResponse;
+use App\Helper\Application;
+use App\Helper\Asset;
+use App\Helper\Image;
+use App\Helper\Slot;
+use App\Helper\File;
+use App\Helper\Debug;
+use App\Helper\DataStorage;
 
 /**
  * Регистрация контроллера в роуте  в любом неймспейсе
  */
 function resolveController(string $class, string $action): array
 {
-    $alias = str_replace('\\', '', $class);
+    static $map = [];
+    static $registered = false;
 
-    if (!class_exists($alias, false)) {
-        class_alias($class, $alias);
+    $class = ltrim($class, '\\');
+    $alias = str_replace('\\', '_', $class);
+
+    if (isset($map[$alias]) && $map[$alias] !== $class) {
+        throw new LogicException("Коллизия алиаса {$alias}: {$map[$alias]} и {$class}");
+    }
+    $map[$alias] = $class;
+
+    if (!$registered) {
+        $registered = true;
+        spl_autoload_register(static function (string $name) use (&$map): void {
+            if (isset($map[$name])) {
+                class_alias($map[$name], $name);
+            }
+        });
     }
 
     return [$alias, $action];
@@ -33,6 +47,30 @@ function routeUrl(string $name, $parameters = []): string
 function __sl(string $name)
 {
     return \Bitrix\Main\DI\ServiceLocator::getInstance()->get($name);
+}
+
+/**
+ * Ресайз изображения с конвертацией в WebP.
+ * Аналог CFile::ResizeImageGet().
+ */
+function cFileWebp(
+    array|int $file,
+    array $size,
+    int $resizeType = BX_RESIZE_IMAGE_PROPORTIONAL,
+    bool $initSizes = false,
+    array|bool $filters = false,
+    bool $immediate = false,
+    int|bool $quality = false
+): array|false {
+    return App\Helper\CFileWebp::ResizeImageGetWebp(
+        $file,
+        $size,
+        $resizeType,
+        $initSizes,
+        $filters,
+        $immediate,
+        $quality
+    );
 }
 
 /**
@@ -125,7 +163,7 @@ function imgTag(array|string|int $img, array|string $settings = [], array $attrs
  */
 function __t(string|array|null $value = null, string|array|null $options = null, bool $strip_tag = false,): mixed
 {
-    $loc = \Bitrix\Main\DI\ServiceLocator::getInstance()->get(Helper\Localization::class);
+    $loc = \Bitrix\Main\DI\ServiceLocator::getInstance()->get(App\Helper\Localization::class);
 
     return $loc($value, $options, $strip_tag);
 }
@@ -135,8 +173,8 @@ function __t(string|array|null $value = null, string|array|null $options = null,
  */
 function siteLang()
 {
-    if (\Bitrix\Main\DI\ServiceLocator::getInstance()->has(Helper\Localization::class)) 
-         strtolower(__t()->getLang());
+    if (\Bitrix\Main\DI\ServiceLocator::getInstance()->has(App\Helper\Localization::class))
+        strtolower(__t()->getLang());
     return 'ru';
 }
 

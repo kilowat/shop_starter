@@ -1,6 +1,6 @@
 <?php
 
-namespace Helper;
+namespace App\Helper;
 
 use Bitrix\Main\Config\Configuration;
 use CFile;
@@ -79,11 +79,11 @@ final class Image
         $generateWebp ??= self::webp();
 
         $file = self::file($fileId);
- 
+
         if (!$file) {
             return [];
         }
- 
+
         $settings = self::resolve($settings);
 
         $resize = self::build($file, $settings, $generateWebp);
@@ -160,7 +160,7 @@ final class Image
         bool $generateWebp
     ): array {
         $quality = (int)($settings['quality'] ?? self::quality());
-    
+
         $resize = CFile::ResizeImageGet(
             $file['ID'],
             [

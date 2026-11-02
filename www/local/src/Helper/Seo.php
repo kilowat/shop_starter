@@ -1,8 +1,8 @@
 <?php
 
-namespace Helper;
+namespace App\Helper;
 
-use Helper\Image;
+use App\Helper\Image;
 
 class Seo
 {
@@ -96,7 +96,7 @@ class Seo
         // og:url — всегда равен canonical
         if (!$APPLICATION->GetPageProperty('og:url')) {
             $curPage = explode('?', $APPLICATION->GetCurUri(false))[0];
-            
+
             if (!empty($_REQUEST['PAGEN_1']) && (int)$_REQUEST['PAGEN_1'] > 1) {
                 $curPage .= '?PAGEN_1=' . (int)$_REQUEST['PAGEN_1'];
             }

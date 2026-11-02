@@ -3,18 +3,15 @@
     "description": "Bitrix Project",
     "type": "project",
     "require": {
-        "wikimedia/composer-merge-plugin": "^2.0"
+        "wikimedia/composer-merge-plugin": "^2.0",
+        "zircote/swagger-php": "^7.0"
     },
     "autoload": {
         "psr-4": {
-            "Components\\": "components/",
             "Controllers\\": "controllers/",
-            "Lib\\": "lib/",
-            "Services\\": "services/"
+            "App\\": "src/"
         },
-        "files": [
-            "init.php"
-        ]
+        "files": []
     },
     "config": {
         "process-timeout": 1800,

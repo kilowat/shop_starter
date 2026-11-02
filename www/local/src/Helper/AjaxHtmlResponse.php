@@ -1,6 +1,6 @@
 <?php
 
-namespace Helper;
+namespace App\Helper;
 
 use Bitrix\Main\Application;
 use Bitrix\Main\Engine\Response\AjaxJson;

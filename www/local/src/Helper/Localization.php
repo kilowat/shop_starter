@@ -1,6 +1,6 @@
 <?php
 
-namespace Helper;
+namespace App\Helper;
 
 use Bitrix\Highloadblock\HighloadBlockTable;
 use Bitrix\Main\Application;

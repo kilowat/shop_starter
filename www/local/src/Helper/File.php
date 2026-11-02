@@ -1,6 +1,6 @@
 <?php
 
-namespace Helper;
+namespace App\Helper;
 
 class File
 {
@@ -45,7 +45,7 @@ class File
         if (!$path) {
             return;
         }
- 
+
         $APPLICATION->IncludeComponent(
             'bitrix:main.include',
             '',

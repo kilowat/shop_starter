@@ -1,8 +1,9 @@
 <?php
 
-namespace Helper;
+namespace App\Helper;
 
 use Bitrix\Main\Page\Asset as BitrixAsset;
+use App\Helper\Image;
 
 class Asset
 {
@@ -100,8 +101,8 @@ class Asset
      */
     public static function img(string $src, ?int $quality = null, bool|string $domain = false): string|false
     {
-        $quality ??= \Helper\Image::quality();
-        $useWebp = \Helper\Image::webp();
+        $quality ??= Image::quality();
+        $useWebp = Image::webp();
 
         $cacheKey = $src . '|' . $quality . '|' . (int)$useWebp;
 
@@ -121,7 +122,7 @@ class Asset
             }
 
             $webFile = $useWebp
-                ? \Helper\Image::toWebpFile($relativePath, $quality, [])
+                ? Image::toWebpFile($relativePath, $quality, [])
                 : false;
 
             $finalPath = $webFile ?: $relativePath;
