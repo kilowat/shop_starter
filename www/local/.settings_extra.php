@@ -28,14 +28,7 @@ return [
         'readonly' => false,
     ],
     'services' => [
-        'value' => [
-            Services\Auth\AuthService::class => [
-                'className' => Services\Auth\AuthService::class
-            ],
-            Services\Basket\BasketService::class => [
-                'className' => Services\Basket\BasketService::class
-            ],
-        ],
+        'value' => [],
         'readonly' => true,
     ],
 ];

@@ -1,6 +1,6 @@
 <?php
 
-namespace Services\Basket;
+namespace App\Basket;
 
 use Bitrix\Main\Loader;
 use Bitrix\Main\SystemException;
@@ -31,6 +31,7 @@ class BasketService
         Loader::includeModule('catalog');
         Loader::includeModule('iblock');
         Loader::includeModule('currency');
+
         $this->productProviderClass = $productProviderClass;
 
         $this->basket = Sale\Basket::loadItemsForFUser(
@@ -425,10 +426,10 @@ class BasketService
             $arFilters
         );
 
-        $originImage =   \CFile::GetByID($imageId)?->Fetch() ?? [];
+        $originImage = \CFile::GetByID($imageId)?->Fetch() ?? [];
 
         return [
-            'resized' =>  $resizedImage,
+            'resized' => $resizedImage,
             'origin' => array_change_key_case($originImage, CASE_LOWER),
         ];
     }
@@ -643,16 +644,22 @@ class BasketService
     private function calculateVatValue(Sale\BasketItem $item): float
     {
         $vatRate = (float) $item->getVatRate();
+
         if ($vatRate <= 0) {
-            return 0;
+            return 0.0;
         }
 
-        $price = $item->getPrice();
-        $quantity = $item->getQuantity();
+        $price = (float) $item->getPrice();
 
-        return PriceMaths::roundPrecision(
-            ($price * $quantity / ($vatRate + 1)) * $vatRate / $quantity
-        );
+        // НДС уже включён в цену: выделяем его из цены
+        if ($item->isVatInPrice()) {
+            $vat = $price / (1 + $vatRate) * $vatRate;
+        } else {
+            // НДС сверху: начисляем его на цену
+            $vat = $price * $vatRate;
+        }
+
+        return PriceMaths::roundPrecision($vat);
     }
 
     private function loadElements(array $ids): array

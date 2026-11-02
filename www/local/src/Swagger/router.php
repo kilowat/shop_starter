@@ -28,15 +28,15 @@ $config = [
     // Что сканировать (пути от корня сайта)
     'source_dirs' => [
         '/local/controllers',
-        '/local/src',
+        '/local/src/Swagger/Schemas',
     ],
 
     // Маска файлов для сканирования
     'file_pattern' => '*.php',
 
     // Что исключить из сканирования
-    'exclude_paths' => ['Swagger/ui'],               // по части пути
-    'exclude_names' => ['router.php'],               // по имени файла (можно добавить 'const.php', 'func.php' и т.п.)
+    'exclude_paths' => [],               // по части пути
+    'exclude_names' => [],               // по имени файла (можно добавить 'const.php', 'func.php' и т.п.)
 
     // Версия OpenAPI ('3.0.0', '3.1.0', '3.2.0') или null — решает swagger-php
     'openapi_version' => null,
@@ -60,12 +60,13 @@ return static function (RoutingConfigurator $routes) use ($config) {
 
         // Подробности ошибок показываем только если в Bitrix включён debug
         // (/bitrix/.settings.php → exception_handling → debug)
-        $debug = (bool)(Configuration::getValue('exception_handling')['debug'] ?? false);
+        $debug = (bool) (Configuration::getValue('exception_handling')['debug'] ?? false);
 
-        $logger = new class($config['ignored_log_levels']) extends AbstractLogger {
+        $logger = new class ($config['ignored_log_levels']) extends AbstractLogger {
             public array $messages = [];
 
-            public function __construct(private array $ignoredLevels) {}
+            public function __construct(private array $ignoredLevels)
+            {}
 
             public function log($level, string|\Stringable $message, array $context = []): void
             {
@@ -76,13 +77,13 @@ return static function (RoutingConfigurator $routes) use ($config) {
                 $replace = [];
                 foreach ($context as $key => $value) {
                     if (is_scalar($value) || $value instanceof \Stringable) {
-                        $replace['{' . $key . '}'] = (string)$value;
+                        $replace['{' . $key . '}'] = (string) $value;
                     }
                 }
 
                 $this->messages[] = [
-                    'level'   => (string)$level,
-                    'message' => strtr((string)$message, $replace),
+                'level' => (string) $level,
+                'message' => strtr((string) $message, $replace),
                 ];
             }
         };
