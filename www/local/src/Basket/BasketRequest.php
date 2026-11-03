@@ -2,28 +2,19 @@
 
 namespace App\Basket;
 
-use App\Helper\Http\Mapper\Key;
 use App\Helper\Http\Mapper\RequestMapper;
 
-final class BasketRequest
+final readonly class BasketRequest
 {
     use RequestMapper;
 
-    #[Key('productId')]
-    public string|int $productId = 0;
-
-    #[Key('basketId')]
-    public string|int $basketId = 0;
-
-    #[Key('quantity')]
-    public float $quantity = 1;
-
-    #[Key('delay')]
-    public bool $delay = false;
-
-    #[Key('props')]
-    public array $props = [];
-
-    #[Key('coupon')]
-    public string $coupon = '';
+    public function __construct(
+        public string|int $productId = 0,
+        public string|int $basketId = 0,
+        public float $quantity = 1,
+        public bool $delay = true,
+        public array $props = [],
+        public string $coupon = '',
+    ) {
+    }
 }

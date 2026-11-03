@@ -5,6 +5,7 @@ namespace App\Helper\Http\Mapper;
 use Bitrix\Main\HttpRequest;
 use ReflectionClass;
 use ReflectionProperty;
+use ReflectionParameter;
 
 trait RequestMapper
 {
@@ -13,27 +14,45 @@ trait RequestMapper
      */
     public static function fromRequest(HttpRequest $request): static
     {
-        $dto = new static();
-
         $data = self::getRequestData($request);
 
-        $reflection = new ReflectionClass($dto);
+        $reflection = new ReflectionClass(static::class);
+        $constructor = $reflection->getConstructor();
 
-        foreach ($reflection->getProperties() as $property) {
-            if (!$property->isPublic() || $property->isStatic()) {
-                continue;
+        // Если конструктор отсутствует, используем старый механизм.
+        if ($constructor === null) {
+            $dto = new static();
+
+            foreach ($reflection->getProperties() as $property) {
+                if (!$property->isPublic() || $property->isStatic()) {
+                    continue;
+                }
+
+                $key = self::getPropertyKey($property);
+
+                if (array_key_exists($key, $data)) {
+                    $property->setValue($dto, $data[$key]);
+                }
             }
 
-            $key = $dto->getPropertyKey($property);
-
-            if (!array_key_exists($key, $data)) {
-                continue;
-            }
-
-            $property->setValue($dto, $data[$key]);
+            return $dto;
         }
 
-        return $dto;
+        $arguments = [];
+
+        foreach ($constructor->getParameters() as $parameter) {
+            if ($parameter->isVariadic()) {
+                continue;
+            }
+
+            $key = self::getParameterKey($reflection, $parameter);
+
+            if (array_key_exists($key, $data)) {
+                $arguments[$parameter->getName()] = $data[$key];
+            }
+        }
+
+        return new static(...$arguments);
     }
 
     /**
@@ -53,10 +72,29 @@ trait RequestMapper
     }
 
     /**
+     * Получает внешний ключ параметра конструктора.
+     */
+    private static function getParameterKey(
+        ReflectionClass $reflection,
+        ReflectionParameter $parameter
+    ): string {
+        $name = $parameter->getName();
+
+        if (!$reflection->hasProperty($name)) {
+            return $name;
+        }
+
+        return self::getPropertyKey(
+            $reflection->getProperty($name)
+        );
+    }
+
+    /**
      * Получает внешний ключ свойства.
      */
-    private function getPropertyKey(ReflectionProperty $property): string
-    {
+    private static function getPropertyKey(
+        ReflectionProperty $property
+    ): string {
         $attributes = $property->getAttributes(Key::class);
 
         if ($attributes === []) {
@@ -97,7 +135,7 @@ trait RequestMapper
                 }
             }
 
-            $key = $this->getPropertyKey($property);
+            $key = self::getPropertyKey($property);
 
             $result[$key] = $value;
         }
