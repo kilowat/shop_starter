@@ -46,7 +46,13 @@ final class Basket
                         properties: [
                             new OA\Property(
                                 property: 'productId',
-                                schema: new OA\Schema(type: 'integer', example: 101),
+                                schema: new OA\Schema(
+                                    oneOf: [
+                                        new OA\Schema(type: 'integer'),
+                                        new OA\Schema(type: 'string'),
+                                    ],
+                                    example: 101,
+                                ),
                             ),
                             new OA\Property(
                                 property: 'quantity',
@@ -88,6 +94,46 @@ final class Basket
         path: '/api/basket/items/quantity',
         operationId: 'basketUpdateQuantity',
         summary: 'Изменить количество',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: [
+                new OA\MediaType(
+                    mediaType: 'application/json',
+                    schema: new OA\Schema(
+                        type: 'object',
+                        required: ['basketId', 'quantity'],
+                        properties: [
+                            new OA\Property(
+                                property: 'basketId',
+                                schema: new OA\Schema(
+                                    oneOf: [
+                                        new OA\Schema(type: 'integer'),
+                                        new OA\Schema(type: 'string'),
+                                    ],
+                                    example: 15,
+                                ),
+                            ),
+                            new OA\Property(
+                                property: 'quantity',
+                                schema: new OA\Schema(type: 'number', format: 'float', example: 2),
+                            ),
+                        ],
+                    ),
+                ),
+            ],
+        ),
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Успешный ответ',
+                content: new OA\Schema(ref: BasketResponse::class),
+            ),
+            new OA\Response(
+                response: 400,
+                description: 'Ошибка запроса',
+                content: new OA\Schema(ref: ApiError::class),
+            ),
+        ],
     )]
     public function updateQuantity(): void
     {
@@ -100,6 +146,50 @@ final class Basket
         path: '/api/basket/items/delay',
         operationId: 'basketSetDelay',
         summary: 'Отложить / вернуть товар',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: [
+                new OA\MediaType(
+                    mediaType: 'application/json',
+                    schema: new OA\Schema(
+                        type: 'object',
+                        required: ['basketId'],
+                        properties: [
+                            new OA\Property(
+                                property: 'basketId',
+                                schema: new OA\Schema(
+                                    oneOf: [
+                                        new OA\Schema(type: 'integer'),
+                                        new OA\Schema(type: 'string'),
+                                    ],
+                                    example: 15,
+                                ),
+                            ),
+                            new OA\Property(
+                                property: 'delay',
+                                schema: new OA\Schema(
+                                    type: 'boolean',
+                                    default: true,
+                                    description: 'true: отложить, false: вернуть в корзину',
+                                ),
+                            ),
+                        ],
+                    ),
+                ),
+            ],
+        ),
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Успешный ответ',
+                content: new OA\Schema(ref: BasketResponse::class),
+            ),
+            new OA\Response(
+                response: 400,
+                description: 'Ошибка запроса',
+                content: new OA\Schema(ref: ApiError::class),
+            ),
+        ],
     )]
     public function setDelay(): void
     {
@@ -112,6 +202,42 @@ final class Basket
         path: '/api/basket/items/remove',
         operationId: 'basketRemove',
         summary: 'Удалить позицию',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: [
+                new OA\MediaType(
+                    mediaType: 'application/json',
+                    schema: new OA\Schema(
+                        type: 'object',
+                        required: ['basketId'],
+                        properties: [
+                            new OA\Property(
+                                property: 'basketId',
+                                schema: new OA\Schema(
+                                    oneOf: [
+                                        new OA\Schema(type: 'integer'),
+                                        new OA\Schema(type: 'string'),
+                                    ],
+                                    example: 15,
+                                ),
+                            ),
+                        ],
+                    ),
+                ),
+            ],
+        ),
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Успешный ответ',
+                content: new OA\Schema(ref: BasketResponse::class),
+            ),
+            new OA\Response(
+                response: 400,
+                description: 'Ошибка запроса',
+                content: new OA\Schema(ref: ApiError::class),
+            ),
+        ],
     )]
     public function remove(): void
     {
@@ -124,6 +250,13 @@ final class Basket
         path: '/api/basket/clear',
         operationId: 'basketClear',
         summary: 'Очистить корзину',
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Успешный ответ',
+                content: new OA\Schema(ref: BasketResponse::class),
+            ),
+        ],
     )]
     public function clear(): void
     {
@@ -136,6 +269,36 @@ final class Basket
         path: '/api/basket/coupon',
         operationId: 'basketApplyCoupon',
         summary: 'Применить купон',
+        description: 'Пустая строка очищает купоны.',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: [
+                new OA\MediaType(
+                    mediaType: 'application/json',
+                    schema: new OA\Schema(
+                        type: 'object',
+                        properties: [
+                            new OA\Property(
+                                property: 'coupon',
+                                schema: new OA\Schema(type: 'string', default: '', example: 'SALE2026'),
+                            ),
+                        ],
+                    ),
+                ),
+            ],
+        ),
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Успешный ответ (в data дополнительно приходит coupon_result)',
+                content: new OA\Schema(ref: BasketResponse::class),
+            ),
+            new OA\Response(
+                response: 400,
+                description: 'Ошибка запроса',
+                content: new OA\Schema(ref: ApiError::class),
+            ),
+        ],
     )]
     public function applyCoupon(): void
     {
@@ -148,6 +311,36 @@ final class Basket
         path: '/api/basket/coupon/remove',
         operationId: 'basketRemoveCoupon',
         summary: 'Удалить купон',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: [
+                new OA\MediaType(
+                    mediaType: 'application/json',
+                    schema: new OA\Schema(
+                        type: 'object',
+                        required: ['coupon'],
+                        properties: [
+                            new OA\Property(
+                                property: 'coupon',
+                                schema: new OA\Schema(type: 'string', example: 'SALE2026'),
+                            ),
+                        ],
+                    ),
+                ),
+            ],
+        ),
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Успешный ответ',
+                content: new OA\Schema(ref: BasketResponse::class),
+            ),
+            new OA\Response(
+                response: 400,
+                description: 'Ошибка запроса',
+                content: new OA\Schema(ref: ApiError::class),
+            ),
+        ],
     )]
     public function removeCoupon(): void
     {

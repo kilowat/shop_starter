@@ -47,36 +47,60 @@ class BasketService
     =            PUBLIC API               =
     =====================================*/
 
-    public function add(int $productId, float $quantity = 1, array $props = []): void
+    public function add(string|int $productId, float $quantity = 1, array $props = []): void
     {
-        $items = $this->basket->getExistsItems('catalog', $productId);
+        $productId = (int) $productId;
 
-        if (!empty($items)) {
-            foreach ($items as $item) {
-                $item->setField('QUANTITY', $item->getQuantity() + $quantity);
+        if ($productId <= 0) {
+            throw new SystemException('Некорректный ID товара');
+        }
+
+        // Проверяем, существует ли товар в каталоге.
+        $product = ProductTable::getById($productId)->fetch();
+
+        if (!$product) {
+            throw new SystemException('Товар не найден');
+        }
+
+        // Родительский товар с торговыми предложениями добавлять нельзя.
+        if ((int) $product['TYPE'] === ProductTable::TYPE_SKU) {
+            throw new SystemException(
+                'Нельзя добавить товар напрямую. Выберите торговое предложение.'
+            );
+        }
+
+        if ($product['AVAILABLE'] !== 'Y') {
+            throw new SystemException('Товар недоступен для покупки');
+        }
+
+        // Проверяем, что количество положительное.
+        if ($quantity <= 0) {
+            throw new SystemException('Количество товара должно быть больше нуля');
+        }
+
+        // Создаём элемент корзины.
+        $item = $this->basket->createItem('catalog', $productId);
+
+        $item->setFields([
+            'QUANTITY' => $quantity,
+            'CURRENCY' => CurrencyManager::getBaseCurrency(),
+            'LID' => SITE_ID,
+            'PRODUCT_PROVIDER_CLASS' => $this->productProviderClass,
+        ]);
+
+        if ($props) {
+            $collection = $item->getPropertyCollection();
+
+            foreach ($props as $prop) {
+                $property = $collection->createItem();
+                $property->setFields($prop);
             }
-        } else {
-            $item = $this->basket->createItem('catalog', $productId);
-
-            $fields = [
-                'QUANTITY' => $quantity,
-                'CURRENCY' => CurrencyManager::getBaseCurrency(),
-                'LID' => SITE_ID,
-                'PRODUCT_PROVIDER_CLASS' => $this->productProviderClass,
-            ];
-
-            // Добавляем свойства товара если есть (для офферов)
-            if (!empty($props)) {
-                $fields['PROPS'] = $props;
-            }
-
-            $item->setFields($fields);
         }
 
         $this->save();
     }
 
-    public function remove(int $productId): void
+    public function remove(string|int $productId): void
     {
         $items = $this->basket->getExistsItems('catalog', $productId);
 
@@ -87,9 +111,9 @@ class BasketService
         $this->save();
     }
 
-    public function removeById(int $basketId): void
+    public function removeById(string|int $basketItemId): void
     {
-        $item = $this->basket->getItemById($basketId);
+        $item = $this->basket->getItemById($basketItemId);
 
         if ($item) {
             $item->delete();
@@ -106,9 +130,9 @@ class BasketService
         $this->save();
     }
 
-    public function updateQuantity(int $basketId, float $quantity): void
+    public function updateQuantity(string|int $basketItemId, float $quantity): void
     {
-        $item = $this->basket->getItemById($basketId);
+        $item = $this->basket->getItemById($basketItemId);
 
         if ($item) {
             $item->setField('QUANTITY', $quantity);
@@ -117,9 +141,9 @@ class BasketService
         }
     }
 
-    public function setDelay(int $basketId, bool $delay = true): void
+    public function setDelay(string|int $basketItemId, bool $delay = true): void
     {
-        $item = $this->basket->getItemById($basketId);
+        $item = $this->basket->getItemById($basketItemId);
 
         if ($item && in_array('DELAY', $this->getAvailableColumns())) {
             $item->setField('DELAY', $delay ? 'Y' : 'N');
@@ -418,7 +442,7 @@ class BasketService
         $bInitSizes = true;
         $arFilters = [];
 
-        $resizedImage = \CFile::ResizeImageGet(
+        $resizedImage = CFile::ResizeImageGet(
             $imageId,
             $arSize,
             $resizeType,
@@ -426,7 +450,7 @@ class BasketService
             $arFilters
         );
 
-        $originImage = \CFile::GetByID($imageId)?->Fetch() ?? [];
+        $originImage = CFile::GetByID($imageId)?->Fetch() ?? [];
 
         return [
             'resized' => $resizedImage,

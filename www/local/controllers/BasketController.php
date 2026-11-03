@@ -2,10 +2,11 @@
 
 namespace Controllers;
 
+use App\Basket\BasketRequest;
 use App\Basket\BasketService;
-use Bitrix\Main\Engine\ActionFilter;
+
 use Bitrix\Main\Engine\Controller;
-use Bitrix\Main\Error;
+
 
 final class BasketController extends Controller
 {
@@ -20,28 +21,16 @@ final class BasketController extends Controller
 
     public function configureActions(): array
     {
-        $post = [
-            new ActionFilter\HttpMethod([
-                ActionFilter\HttpMethod::METHOD_POST,
-            ]),
-        ];
+        return [];
+    }
 
+    public function getAutoWiredParameters(): array
+    {
         return [
-            'show' => [
-                'prefilters' => [
-                    new ActionFilter\HttpMethod([
-                        ActionFilter\HttpMethod::METHOD_GET,
-                    ]),
-                ],
-            ],
-
-            'add' => ['prefilters' => $post],
-            'updateQuantity' => ['prefilters' => $post],
-            'setDelay' => ['prefilters' => $post],
-            'remove' => ['prefilters' => $post],
-            'clear' => ['prefilters' => $post],
-            'applyCoupon' => ['prefilters' => $post],
-            'removeCoupon' => ['prefilters' => $post],
+            new \Bitrix\Main\Validation\Engine\AutoWire\ValidationParameter(
+                BasketRequest::class,
+                fn() => BasketRequest::fromRequest($this->getRequest()),
+            ),
         ];
     }
 
@@ -56,20 +45,9 @@ final class BasketController extends Controller
     /**
      * Добавить товар.
      */
-    public function addAction(
-        int $productId,
-        float $quantity = 1,
-        array $props = []
-    ): ?array {
-        if ($productId <= 0 || $quantity <= 0) {
-            $this->addError(
-                new Error('Некорректные параметры', 'INVALID_PARAMS')
-            );
-
-            return null;
-        }
-
-        $this->basket->add($productId, $quantity, $props);
+    public function addAction(BasketRequest $request): array
+    {
+        $this->basket->add($request->productId, $request->quantity, $request->props);
 
         return $this->basket->getData();
     }
@@ -77,19 +55,9 @@ final class BasketController extends Controller
     /**
      * Изменить количество товара.
      */
-    public function updateQuantityAction(
-        int $basketId,
-        float $quantity
-    ): ?array {
-        if ($basketId <= 0 || $quantity <= 0) {
-            $this->addError(
-                new Error('Некорректные параметры', 'INVALID_PARAMS')
-            );
-
-            return null;
-        }
-
-        $this->basket->updateQuantity($basketId, $quantity);
+    public function updateQuantityAction(BasketRequest $request): array
+    {
+        $this->basket->updateQuantity($request->basketId, $request->quantity);
 
         return $this->basket->getData();
     }
@@ -97,11 +65,9 @@ final class BasketController extends Controller
     /**
      * Отложить или вернуть товар.
      */
-    public function setDelayAction(
-        int $basketId,
-        bool $delay = true
-    ): array {
-        $this->basket->setDelay($basketId, $delay);
+    public function setDelayAction(BasketRequest $request): array
+    {
+        $this->basket->setDelay($request->basketId, $request->delay);
 
         return $this->basket->getData();
     }
@@ -109,9 +75,9 @@ final class BasketController extends Controller
     /**
      * Удалить позицию из корзины.
      */
-    public function removeAction(int $basketId): array
+    public function removeAction(BasketRequest $request): array
     {
-        $this->basket->removeById($basketId);
+        $this->basket->removeById($request->basketId);
 
         return $this->basket->getData();
     }
@@ -131,9 +97,9 @@ final class BasketController extends Controller
      *
      * Пустая строка очищает купоны.
      */
-    public function applyCouponAction(string $coupon = ''): array
+    public function applyCouponAction(BasketRequest $request): array
     {
-        $result = $this->basket->applyCoupon($coupon);
+        $result = $this->basket->applyCoupon($request->coupon);
 
         return $this->basket->getData() + [
             'coupon_result' => $result,
@@ -143,10 +109,12 @@ final class BasketController extends Controller
     /**
      * Удалить купон.
      */
-    public function removeCouponAction(string $coupon): array
+    public function removeCouponAction(BasketRequest $request): array
     {
-        $this->basket->removeCoupon($coupon);
+        $this->basket->removeCoupon($request->coupon);
 
         return $this->basket->getData();
     }
 }
+
+
