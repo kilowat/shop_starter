@@ -19,14 +19,13 @@ class BasketService
     private Sale\Basket $basket;
     private ?Sale\Order $order = null;
     private array $discountData = [];
-    private array $skuParentMap = []; // Карта соответствия оффер -> родитель
+    private array $skuParentMap = [];  // Карта соответствия оффер -> родитель
     private array $elementUrlMap = []; // Карта URL элементов
 
     private string $productProviderClass;
 
     public function __construct($productProviderClass = Catalog\Product\CatalogProvider::class)
     {
-
         Loader::includeModule('sale');
         Loader::includeModule('catalog');
         Loader::includeModule('iblock');
@@ -47,7 +46,16 @@ class BasketService
     =            PUBLIC API               =
     =====================================*/
 
-    public function add(string|int $productId, float $quantity = 1, array $props = []): void
+    /**
+     * Добавить товар в корзину.
+     *
+     * - Если товар уже в корзине (с теми же свойствами) – количество увеличивается.
+     * - Если $quantity не передан – используется шаг товара (по умолчанию 1).
+     * - Количество приводится к кратному шагу и обрезается по остатку.
+     *
+     * @return array{id:int, quantity:float, deleted:bool}
+     */
+    public function add(string|int $productId, ?float $quantity = null, array $props = []): array
     {
         $productId = (int) $productId;
 
@@ -55,7 +63,6 @@ class BasketService
             throw new SystemException('Некорректный ID товара');
         }
 
-        // Проверяем, существует ли товар в каталоге.
         $product = ProductTable::getById($productId)->fetch();
 
         if (!$product) {
@@ -73,20 +80,40 @@ class BasketService
             throw new SystemException('Товар недоступен для покупки');
         }
 
-        // Проверяем, что количество положительное.
+        $ratio = $this->getProductRatio($productId);
+        $quantity ??= $ratio;
+
         if ($quantity <= 0) {
             throw new SystemException('Количество товара должно быть больше нуля');
         }
 
-        // Создаём элемент корзины.
+        // Ищем существующую позицию (с учётом свойств)
+        $existing = $this->basket->getExistsItems('catalog', $productId, $props);
+        $item = $existing ? reset($existing) : null;
+
+        if ($item) {
+            // Повторное добавление = инкремент
+            $newQuantity = $this->normalizeQuantity($productId, $item->getQuantity() + $quantity);
+            $this->changeQuantity($item, $newQuantity);
+            $this->save();
+
+            return $this->itemState($item);
+        }
+
+        $quantity = $this->normalizeQuantity($productId, $quantity);
+
         $item = $this->basket->createItem('catalog', $productId);
 
-        $item->setFields([
+        $result = $item->setFields([
             'QUANTITY' => $quantity,
             'CURRENCY' => CurrencyManager::getBaseCurrency(),
             'LID' => SITE_ID,
             'PRODUCT_PROVIDER_CLASS' => $this->productProviderClass,
         ]);
+
+        if (!$result->isSuccess()) {
+            throw new SystemException(implode(', ', $result->getErrorMessages()));
+        }
 
         if ($props) {
             $collection = $item->getPropertyCollection();
@@ -98,6 +125,92 @@ class BasketService
         }
 
         $this->save();
+
+        return $this->itemState($item);
+    }
+
+    /**
+     * Увеличить количество позиции на шаг (или на $step).
+     *
+     * @return array{id:int, quantity:float, deleted:bool}
+     */
+    public function increment(string|int $basketItemId, ?float $step = null): array
+    {
+        $item = $this->getItemOrFail($basketItemId);
+        $productId = (int) $item->getProductId();
+
+        $step ??= $this->getProductRatio($productId);
+
+        if ($step <= 0) {
+            throw new SystemException('Шаг должен быть больше нуля');
+        }
+
+        $newQuantity = $this->normalizeQuantity($productId, $item->getQuantity() + $step);
+
+        $this->changeQuantity($item, $newQuantity);
+        $this->save();
+
+        return $this->itemState($item);
+    }
+
+    /**
+     * Уменьшить количество позиции на шаг (или на $step).
+     * Если количество становится <= 0 – позиция удаляется.
+     *
+     * @return array{id:int, quantity:float, deleted:bool}
+     */
+    public function decrement(string|int $basketItemId, ?float $step = null): array
+    {
+        $item = $this->getItemOrFail($basketItemId);
+        $productId = (int) $item->getProductId();
+        $id = (int) $item->getId();
+
+        $step ??= $this->getProductRatio($productId);
+
+        if ($step <= 0) {
+            throw new SystemException('Шаг должен быть больше нуля');
+        }
+
+        $newQuantity = round($item->getQuantity() - $step, 4);
+
+        if ($newQuantity <= 0) {
+            $item->delete();
+            $this->save();
+
+            return ['id' => $id, 'quantity' => 0.0, 'deleted' => true];
+        }
+
+        $this->changeQuantity($item, $this->normalizeQuantity($productId, $newQuantity));
+        $this->save();
+
+        return $this->itemState($item);
+    }
+
+    /**
+     * Установить абсолютное количество (идемпотентно – безопасно для частых кликов).
+     * Значение приводится к допустимому шагу и обрезается по остатку.
+     * В ответе возвращается фактическое количество.
+     *
+     * @return array{id:int, quantity:float, deleted:bool}
+     */
+    public function updateQuantity(string|int $basketItemId, float $quantity): array
+    {
+        $item = $this->getItemOrFail($basketItemId);
+        $id = (int) $item->getId();
+
+        if ($quantity <= 0) {
+            $item->delete();
+            $this->save();
+
+            return ['id' => $id, 'quantity' => 0.0, 'deleted' => true];
+        }
+
+        $quantity = $this->normalizeQuantity((int) $item->getProductId(), $quantity);
+
+        $this->changeQuantity($item, $quantity);
+        $this->save();
+
+        return $this->itemState($item);
     }
 
     public function remove(string|int $productId): void
@@ -113,7 +226,7 @@ class BasketService
 
     public function removeById(string|int $basketItemId): void
     {
-        $item = $this->basket->getItemById($basketItemId);
+        $item = $this->basket->getItemById((int) $basketItemId);
 
         if ($item) {
             $item->delete();
@@ -130,20 +243,9 @@ class BasketService
         $this->save();
     }
 
-    public function updateQuantity(string|int $basketItemId, float $quantity): void
-    {
-        $item = $this->basket->getItemById($basketItemId);
-
-        if ($item) {
-            $item->setField('QUANTITY', $quantity);
-            $this->refresh();
-            $this->save();
-        }
-    }
-
     public function setDelay(string|int $basketItemId, bool $delay = true): void
     {
-        $item = $this->basket->getItemById($basketItemId);
+        $item = $this->basket->getItemById((int) $basketItemId);
 
         if ($item && in_array('DELAY', $this->getAvailableColumns())) {
             $item->setField('DELAY', $delay ? 'Y' : 'N');
@@ -287,7 +389,8 @@ class BasketService
                 'delay' => $item->isDelay(),
                 'can_buy' => $item->canBuy(),
                 'measure_ratio' => $ratioData[$basketCode]['MEASURE_RATIO'] ?? 1,
-                'available_quantity' => $this->getAvailableQuantity($item),
+                // 0 = остаток не ограничен
+                'available_quantity' => $this->getMaxQuantity((int) $productId) ?? 0,
                 'props' => $this->getItemProperties($item),
                 'price' => $this->buildPriceData($item),
             ];
@@ -348,6 +451,109 @@ class BasketService
     }
 
     /*=====================================
+    =        QUANTITY LOGIC               =
+    =====================================*/
+
+    /**
+     * Приводит количество к допустимому:
+     *  1) кратно шагу (ближайшее, минимум один шаг);
+     *  2) не больше остатка (если учёт остатков включён и покупка в минус запрещена).
+     */
+    private function normalizeQuantity(int $productId, float $quantity): float
+    {
+        $ratio = $this->getProductRatio($productId);
+
+        $steps = max(1, (int) round($quantity / $ratio));
+        $normalized = round($steps * $ratio, 4);
+
+        $max = $this->getMaxQuantity($productId);
+
+        if ($max !== null && $normalized > $max) {
+            // Максимальное количество, кратное шагу, не превышающее остаток
+            $maxSteps = (int) floor(($max / $ratio) + 1e-9);
+
+            if ($maxSteps < 1) {
+                throw new SystemException('Товара нет в наличии в нужном количестве');
+            }
+
+            $normalized = round($maxSteps * $ratio, 4);
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * Максимально доступное количество или null, если остаток не ограничен.
+     */
+    private function getMaxQuantity(int $productId): ?float
+    {
+        $product = ProductTable::getList([
+            'filter' => ['=ID' => $productId],
+            'select' => ['QUANTITY', 'QUANTITY_TRACE', 'CAN_BUY_ZERO'],
+        ])->fetch();
+
+        if (!$product) {
+            return 0.0;
+        }
+
+        $limited = ($product['QUANTITY_TRACE'] === 'Y' && $product['CAN_BUY_ZERO'] === 'N');
+
+        return $limited ? max(0.0, (float) $product['QUANTITY']) : null;
+    }
+
+    /**
+     * Шаг (коэффициент единицы измерения) товара, по умолчанию 1.
+     */
+    private function getProductRatio(int $productId): float
+    {
+        $row = Catalog\MeasureRatioTable::getList([
+            'filter' => ['=PRODUCT_ID' => $productId, '=IS_DEFAULT' => 'Y'],
+            'select' => ['RATIO'],
+            'limit' => 1,
+        ])->fetch();
+
+        $ratio = $row ? (float) $row['RATIO'] : 1.0;
+
+        return $ratio > 0 ? $ratio : 1.0;
+    }
+
+    /**
+     * Устанавливает количество и проверяет результат
+     * (провайдер может вернуть ошибку, например при нехватке остатков).
+     */
+    private function changeQuantity(Sale\BasketItem $item, float $quantity): void
+    {
+        $result = $item->setField('QUANTITY', round($quantity, 4));
+
+        if (!$result->isSuccess()) {
+            throw new SystemException(implode(', ', $result->getErrorMessages()));
+        }
+    }
+
+    private function getItemOrFail(string|int $basketItemId): Sale\BasketItem
+    {
+        $item = $this->basket->getItemById((int) $basketItemId);
+
+        if (!$item) {
+            throw new SystemException('Позиция корзины не найдена');
+        }
+
+        return $item;
+    }
+
+    /**
+     * Фактическое состояние позиции после изменения.
+     */
+    private function itemState(Sale\BasketItem $item): array
+    {
+        return [
+            'id' => (int) $item->getId(),
+            'quantity' => (float) $item->getQuantity(),
+            'deleted' => false,
+        ];
+    }
+
+    /*=====================================
     =           PARENT & URL LOGIC        =
     =====================================*/
 
@@ -402,23 +608,21 @@ class BasketService
     }
 
     /**
-     * Формирует правильную детальную ссылку
-     * Для офферов возвращает ссылку на родительский товар
+     * Формирует правильную детальную ссылку.
+     * Для офферов возвращает ссылку на родительский товар.
      */
     private function buildDetailUrl(?array $element, ?int $parentId, array $allElements): string
     {
-        // Если есть родитель, используем его URL
         if ($parentId && isset($allElements[$parentId])) {
             return $allElements[$parentId]['DETAIL_PAGE_URL'] ?? '';
         }
 
-        // Иначе используем URL самого элемента
         return $element['DETAIL_PAGE_URL'] ?? '';
     }
 
     /**
-     * Получает изображение товара
-     * Для офферов сначала проверяет свое изображение, потом родительское
+     * Получает изображение товара.
+     * Для офферов сначала проверяет свое изображение, потом родительское.
      */
     private function getImage(?array $element, ?array $parentElement): ?array
     {
@@ -428,7 +632,6 @@ class BasketService
             $imageId = $element['PREVIEW_PICTURE'] ?: $element['DETAIL_PICTURE'];
         }
 
-        // Если у оффера нет изображения, берем у родителя
         if (!$imageId && $parentElement) {
             $imageId = $parentElement['PREVIEW_PICTURE'] ?: $parentElement['DETAIL_PICTURE'];
         }
@@ -437,17 +640,12 @@ class BasketService
             return null;
         }
 
-        $arSize = ["width" => 250, "height" => 250];
-        $resizeType = BX_RESIZE_IMAGE_PROPORTIONAL;
-        $bInitSizes = true;
-        $arFilters = [];
-
         $resizedImage = CFile::ResizeImageGet(
             $imageId,
-            $arSize,
-            $resizeType,
-            $bInitSizes,
-            $arFilters
+            ['width' => 250, 'height' => 250],
+            BX_RESIZE_IMAGE_PROPORTIONAL,
+            true,
+            []
         );
 
         $originImage = CFile::GetByID($imageId)?->Fetch() ?? [];
@@ -645,26 +843,6 @@ class BasketService
         return getRatio($data);
     }
 
-    private function getAvailableQuantity(Sale\BasketItem $item): float
-    {
-        if (!Loader::includeModule('catalog')) {
-            return 0;
-        }
-
-        $product = Catalog\ProductTable::getList([
-            'filter' => ['=ID' => $item->getProductId()],
-            'select' => ['QUANTITY', 'QUANTITY_TRACE', 'CAN_BUY_ZERO']
-        ])->fetch();
-
-        if (!$product) {
-            return 0;
-        }
-
-        $checkMax = ($product['QUANTITY_TRACE'] == 'Y' && $product['CAN_BUY_ZERO'] == 'N');
-
-        return $checkMax ? (float) $product['QUANTITY'] : 0;
-    }
-
     private function calculateVatValue(Sale\BasketItem $item): float
     {
         $vatRate = (float) $item->getVatRate();
@@ -692,7 +870,6 @@ class BasketService
             return [];
         }
 
-        // Получаем элементы с основными полями
         $rows = ElementTable::getList([
             'filter' => ['=ID' => $ids],
             'select' => [
@@ -715,13 +892,10 @@ class BasketService
         $iblockIds = array_unique(array_column($rows, 'IBLOCK_ID'));
         $iblockUrlTemplates = $this->loadIblockUrlTemplates($iblockIds);
 
-        // Формируем результат с URL
         $result = [];
         foreach ($rows as $row) {
-            // Добавляем шаблон URL из инфоблока
             $row['DETAIL_PAGE_URL'] = $iblockUrlTemplates[$row['IBLOCK_ID']] ?? '';
 
-            // Формируем детальную ссылку используя шаблон инфоблока
             if (!empty($row['DETAIL_PAGE_URL'])) {
                 $row['DETAIL_PAGE_URL'] = \CIBlock::ReplaceDetailUrl(
                     $row['DETAIL_PAGE_URL'],
@@ -745,7 +919,6 @@ class BasketService
 
         $templates = [];
 
-        // Используем старый способ через CIBlock, так как в ORM тоже нет прямого поля DETAIL_PAGE_URL
         $res = \CIBlock::GetList([], ['ID' => $iblockIds]);
         while ($iblock = $res->Fetch()) {
             $templates[$iblock['ID']] = $iblock['DETAIL_PAGE_URL'];
