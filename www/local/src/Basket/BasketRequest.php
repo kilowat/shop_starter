@@ -12,7 +12,7 @@ final readonly class BasketRequest
         public string|int $productId = 0,
         public string|int $basketId = 0,
         public float $quantity = 1,
-        public bool $delay = true,
+        public bool $delay = false,
         public array $props = [],
         public string $coupon = '',
     ) {
