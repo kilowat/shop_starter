@@ -1,11 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Helper\Http\Mapper;
 
 use Bitrix\Main\HttpRequest;
 use ReflectionClass;
-use ReflectionProperty;
+use ReflectionNamedType;
 use ReflectionParameter;
+use ReflectionProperty;
+use ReflectionType;
 
 trait RequestMapper
 {
@@ -19,19 +23,21 @@ trait RequestMapper
         $reflection = new ReflectionClass(static::class);
         $constructor = $reflection->getConstructor();
 
-        // Если конструктор отсутствует, используем старый механизм.
         if ($constructor === null) {
             $dto = new static();
 
-            foreach ($reflection->getProperties() as $property) {
-                if (!$property->isPublic() || $property->isStatic()) {
+            foreach ($reflection->getProperties(ReflectionProperty::IS_PUBLIC) as $property) {
+                if ($property->isStatic() || $property->isReadOnly()) {
                     continue;
                 }
 
                 $key = self::getPropertyKey($property);
 
                 if (array_key_exists($key, $data)) {
-                    $property->setValue($dto, $data[$key]);
+                    $property->setValue(
+                        $dto,
+                        self::castValue($data[$key], $property->getType())
+                    );
                 }
             }
 
@@ -48,7 +54,12 @@ trait RequestMapper
             $key = self::getParameterKey($reflection, $parameter);
 
             if (array_key_exists($key, $data)) {
-                $arguments[$parameter->getName()] = $data[$key];
+                $arguments[$parameter->getName()] = self::castValue(
+                    $data[$key],
+                    $parameter->getType()
+                );
+            } elseif (!$parameter->isDefaultValueAvailable() && $parameter->allowsNull()) {
+                $arguments[$parameter->getName()] = null;
             }
         }
 
@@ -56,88 +67,175 @@ trait RequestMapper
     }
 
     /**
-     * Собирает данные из HTTP-запроса.
+     * Приоритет (от низкого к высокому): query < body (json или post) < files.
      */
     private static function getRequestData(HttpRequest $request): array
     {
-        $post = $request->getPostList()->toArray();
-        $json = $request->getJsonList()->toArray();
-        $files = $request->getFileList()->toArray();
+        $query = $request->getQueryList()->toArray();
 
-        return array_replace(
-            $post,
-            $json,
-            $files,
-        );
+        $body = $request->isJson()
+            ? $request->getJsonList()->toArray()
+            : $request->getPostList()->toArray();
+
+        $files = self::normalizeFiles($request->getFileList()->toArray());
+
+        return array_replace($query, $body, $files);
     }
 
     /**
-     * Получает внешний ключ параметра конструктора.
+     * Убирает "пустые" загрузки (файл не выбран), чтобы поле считалось не переданным.
      */
+    private static function normalizeFiles(array $files): array
+    {
+        $result = [];
+
+        foreach ($files as $key => $file) {
+            if (!is_array($file)) {
+                continue;
+            }
+
+            // Один файл.
+            if (array_key_exists('tmp_name', $file)) {
+                if ((int) ($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_NO_FILE) {
+                    $result[$key] = $file;
+                }
+                continue;
+            }
+
+            // Список файлов.
+            $list = array_values(array_filter(
+                $file,
+                static fn($item) => is_array($item)
+                    && (int) ($item['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_NO_FILE
+            ));
+
+            if ($list !== []) {
+                $result[$key] = $list;
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Мягкое приведение: ошибок не бросает. Невалидное значение превращается в null
+     * (если тип nullable), дальше его ловит валидация Битрикса.
+     */
+    private static function castValue(mixed $value, ?ReflectionType $type): mixed
+    {
+        if (!$type instanceof ReflectionNamedType || !$type->isBuiltin()) {
+            return $value;
+        }
+
+        if ($value === '' && $type->allowsNull()) {
+            return null;
+        }
+
+        if (!is_scalar($value)) {
+            return $value;
+        }
+
+        $cast = match ($type->getName()) {
+            'int' => filter_var($value, FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE),
+            'float' => filter_var($value, FILTER_VALIDATE_FLOAT, FILTER_NULL_ON_FAILURE),
+            'bool' => filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE),
+            'string' => (string) $value,
+            default => $value,
+        };
+
+        return $cast ?? ($type->allowsNull() ? null : $value);
+    }
+
     private static function getParameterKey(
         ReflectionClass $reflection,
         ReflectionParameter $parameter
     ): string {
         $name = $parameter->getName();
 
-        if (!$reflection->hasProperty($name)) {
-            return $name;
-        }
-
-        return self::getPropertyKey(
-            $reflection->getProperty($name)
-        );
+        return $reflection->hasProperty($name)
+            ? self::getPropertyKey($reflection->getProperty($name))
+            : $name;
     }
 
-    /**
-     * Получает внешний ключ свойства.
-     */
-    private static function getPropertyKey(
-        ReflectionProperty $property
-    ): string {
+    private static function getPropertyKey(ReflectionProperty $property): string
+    {
         $attributes = $property->getAttributes(Key::class);
 
-        if ($attributes === []) {
-            return $property->getName();
-        }
-
-        return $attributes[0]->newInstance()->key;
+        return $attributes === []
+            ? $property->getName()
+            : $attributes[0]->newInstance()->key;
     }
 
     /**
      * Преобразует DTO в массив.
+     *
+     * Поле с #[Key(..., includeIfNull: false)] пропускается, если оно null.
+     * $skipNulls = true пропускает null у всех полей.
      */
-    public function toArray(): array
+    public function toArray(bool $skipNulls = false): array
     {
         $result = [];
-
         $reflection = new ReflectionClass($this);
 
-        foreach ($reflection->getProperties() as $property) {
-            if (!$property->isPublic() || $property->isStatic()) {
-                continue;
-            }
-
-            if (!$property->isInitialized($this)) {
+        foreach ($reflection->getProperties(ReflectionProperty::IS_PUBLIC) as $property) {
+            if ($property->isStatic() || !$property->isInitialized($this)) {
                 continue;
             }
 
             $value = $property->getValue($this);
 
-            $attributes = $property->getAttributes(Key::class);
+            if ($value === null) {
+                if ($skipNulls) {
+                    continue;
+                }
 
-            if ($attributes !== []) {
-                /** @var Key $attribute */
-                $attribute = $attributes[0]->newInstance();
+                $attributes = $property->getAttributes(Key::class);
 
-                if (!$attribute->includeIfNull && $value === null) {
+                if ($attributes !== [] && !$attributes[0]->newInstance()->includeIfNull) {
                     continue;
                 }
             }
 
-            $key = self::getPropertyKey($property);
+            $result[self::getPropertyKey($property)] = $value;
+        }
 
-            $result[$key] = $value;
+        return $result;
+    }
+
+    /**
+     * Поля для Bitrix: только свойства с #[Field] и не null.
+     */
+    public function toFields(): array
+    {
+        $result = [];
+
+        foreach ((new ReflectionClass($this))->getProperties(ReflectionProperty::IS_PUBLIC) as $property) {
+            $attributes = $property->getAttributes(Field::class);
+
+            if ($attributes === [] || !$property->isInitialized($this)) {
+                continue;
+            }
+
+            $value = $property->getValue($this);
+
+            if ($value === null) {
+                continue;
+            }
+
+            /** @var Field $field */
+            $field = $attributes[0]->newInstance();
+
+            if ($field->cast !== null) {
+                $value = $field->cast->apply($value);
+            }
+
+            // 'PROPERTY_VALUES.TAGS' -> ['PROPERTY_VALUES' => ['TAGS' => ...]]
+            $target = &$result;
+            foreach (explode('.', $field->name) as $part) {
+                $target = &$target[$part];
+            }
+            $target = $value;
+            unset($target);
         }
 
         return $result;
