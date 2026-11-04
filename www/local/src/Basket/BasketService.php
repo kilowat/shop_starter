@@ -392,7 +392,7 @@ class BasketService
                 // 0 = остаток не ограничен
                 'available_quantity' => $this->getMaxQuantity((int) $productId) ?? 0,
                 'props' => $this->getItemProperties($item),
-                'price' => $this->buildPriceData($item),
+                'prices' => $this->buildPriceData($item),
             ];
         }
 
