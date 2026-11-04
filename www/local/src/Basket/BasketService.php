@@ -17,8 +17,8 @@ use Bitrix\Main\Config\Option;
 class BasketService
 {
     private Sale\Basket $basket;
-    private ?Sale\Order $order = null;
     private array $discountData = [];
+    private bool $discountsCalculated = false;
     private array $skuParentMap = [];  // Карта соответствия оффер -> родитель
     private array $elementUrlMap = []; // Карта URL элементов
 
@@ -325,11 +325,11 @@ class BasketService
 
     public function getData(): array
     {
-        // Создаем заказ для применения всех скидок
-        $this->initializeOrder();
-
-        // Обновляем корзину
+        // Сначала обновляем корзину: refresh() перезаписывает цены данными
+        // провайдера, поэтому скидки нужно считать уже после него.
+        $this->discountsCalculated = false;
         $this->refresh();
+        $this->initializeDiscounts();
 
         $items = iterator_to_array($this->basket);
 
@@ -359,7 +359,7 @@ class BasketService
         $this->buildElementUrlMap($elements);
 
         $productTypes = $this->loadProductTypes($productIds);
-        $ratioData = $this->getRatioData($items);
+        $ratioData = $this->getRatioData();
 
         $resultItems = [];
 
@@ -388,9 +388,9 @@ class BasketService
                 'image' => $this->getImage($element, $elements[$parentId] ?? null),
                 'delay' => $item->isDelay(),
                 'can_buy' => $item->canBuy(),
-                'measure_ratio' => $ratioData[$basketCode]['MEASURE_RATIO'] ?? 1,
-                // 0 = остаток не ограничен
-                'available_quantity' => $this->getMaxQuantity((int) $productId) ?? 0,
+                'measure_ratio' => $ratioData[$basketCode] ?? 1.0,
+                // null — остаток не ограничен, 0 — товара нет в наличии
+                'available_quantity' => $this->getMaxQuantity((int) $productId),
                 'props' => $this->getItemProperties($item),
                 'prices' => $this->buildPriceData($item),
             ];
@@ -405,7 +405,7 @@ class BasketService
 
     public function getSummary(): array
     {
-        $this->initializeOrder();
+        $this->initializeDiscounts();
 
         $basePrice = PriceMaths::roundPrecision($this->basket->getBasePrice());
         $finalPrice = PriceMaths::roundPrecision($this->basket->getPrice());
@@ -484,12 +484,15 @@ class BasketService
 
     /**
      * Максимально доступное количество или null, если остаток не ограничен.
+     *
+     * Доступное количество — складской остаток за вычетом зарезервированного
+     * (резервы других заказов продавать нельзя).
      */
     private function getMaxQuantity(int $productId): ?float
     {
         $product = ProductTable::getList([
             'filter' => ['=ID' => $productId],
-            'select' => ['QUANTITY', 'QUANTITY_TRACE', 'CAN_BUY_ZERO'],
+            'select' => ['QUANTITY', 'QUANTITY_RESERVED', 'QUANTITY_TRACE', 'CAN_BUY_ZERO'],
         ])->fetch();
 
         if (!$product) {
@@ -498,7 +501,13 @@ class BasketService
 
         $limited = ($product['QUANTITY_TRACE'] === 'Y' && $product['CAN_BUY_ZERO'] === 'N');
 
-        return $limited ? max(0.0, (float) $product['QUANTITY']) : null;
+        if (!$limited) {
+            return null;
+        }
+
+        $available = (float) $product['QUANTITY'] - (float) $product['QUANTITY_RESERVED'];
+
+        return max(0.0, $available);
     }
 
     /**
@@ -687,41 +696,72 @@ class BasketService
     =           PRICE LOGIC               =
     =====================================*/
 
-    private function initializeOrder(): void
+    /**
+     * Считает правила работы с корзиной и применяет цены для показа.
+     *
+     * Для корзины без заказа штатный путь — Discount::buildFromBasket():
+     * calculate() запускает правила (включая купоны), getShowPrices() отдаёт
+     * рассчитанные цены позиций. Временный Order здесь не нужен: у нового
+     * заказа скидки не рассчитываются, поэтому купоны не влияли на цены.
+     */
+    private function initializeDiscounts(): void
     {
-        if (!$this->basket->getOrder()) {
-            $registry = Sale\Registry::getInstance(Sale\Registry::REGISTRY_TYPE_ORDER);
-            /** @var Sale\Order $orderClass */
-            $orderClass = $registry->getOrderClassName();
+        if ($this->discountsCalculated) {
+            return;
+        }
 
-            global $USER;
-            $userId = $USER && $USER->IsAuthorized() ? (int) $USER->GetID() : 0;
+        $this->discountsCalculated = true;
+        $this->discountData = [
+            'full_list' => [],
+            'applied_list' => [],
+        ];
 
-            $this->order = $orderClass::create(SITE_ID, $userId);
-            $this->order->appendBasket($this->basket);
+        if ($this->basket->count() === 0) {
+            return;
+        }
 
-            // Получаем цены с примененными скидками
-            $discounts = $this->order->getDiscount();
-            $showPrices = $discounts->getShowPrices();
+        $context = new Sale\Discount\Context\Fuser($this->basket->getFUserId());
+        $discounts = Sale\Discount::buildFromBasket($this->basket, $context);
 
-            if (!empty($showPrices['BASKET'])) {
-                foreach ($showPrices['BASKET'] as $basketCode => $data) {
-                    $basketItem = $this->basket->getItemByBasketCode($basketCode);
-                    if ($basketItem) {
-                        $basketItem->setFieldNoDemand('BASE_PRICE', $data['SHOW_BASE_PRICE']);
-                        $basketItem->setFieldNoDemand('PRICE', $data['SHOW_PRICE']);
-                        $basketItem->setFieldNoDemand('DISCOUNT_PRICE', $data['SHOW_DISCOUNT']);
-                    }
+        if ($discounts === null) {
+            return;
+        }
+
+        $calcResult = $discounts->calculate();
+
+        if (!$calcResult->isSuccess()) {
+            throw new SystemException(
+                implode(', ', $calcResult->getErrorMessages())
+            );
+        }
+
+        $showPrices = $discounts->getShowPrices();
+
+        if (!empty($showPrices['BASKET'])) {
+            foreach ($showPrices['BASKET'] as $basketCode => $data) {
+                $basketItem = $this->basket->getItemByBasketCode($basketCode);
+
+                if ($basketItem) {
+                    $basketItem->setFieldNoDemand('BASE_PRICE', $data['SHOW_BASE_PRICE']);
+                    $basketItem->setFieldNoDemand('PRICE', $data['SHOW_PRICE']);
+                    $basketItem->setFieldNoDemand('DISCOUNT_PRICE', $data['SHOW_DISCOUNT']);
                 }
             }
-
-            // Получаем информацию о примененных скидках
-            $calcResults = $discounts->getApplyResult(true);
-            $this->discountData = [
-                'full_list' => $calcResults['FULL_DISCOUNT_LIST'] ?? [],
-                'applied_list' => $calcResults['APPLIED_DISCOUNT_LIST'] ?? [],
-            ];
         }
+
+        $calcResults = $discounts->getApplyResult(true);
+        $appliedList = [];
+
+        foreach (($calcResults['DISCOUNT_LIST'] ?? []) as $discount) {
+            if (($discount['APPLY'] ?? 'N') === 'Y') {
+                $appliedList[] = $discount;
+            }
+        }
+
+        $this->discountData = [
+            'full_list' => $calcResults['FULL_DISCOUNT_LIST'] ?? [],
+            'applied_list' => $appliedList,
+        ];
     }
 
     private function buildPriceData(Sale\BasketItem $item): array
@@ -830,17 +870,30 @@ class BasketService
         return $count;
     }
 
-    private function getRatioData(array $items): array
+    /**
+     * Коэффициенты единиц измерения по коду позиции корзины.
+     *
+     * Глобальный getRatio() ожидает в каждом элементе PRODUCT_ID/MODULE/
+     * PRODUCT_PROVIDER_CLASS, которых в подготовленном массиве не было,
+     * поэтому шаг всегда сводился к 1. Штатный хелпер сам читает ratio
+     * из каталога и кэширует результат.
+     *
+     * @return array<string, float>
+     */
+    private function getRatioData(): array
     {
-        $data = [];
+        $result = Sale\BasketComponentHelper::getRatio($this->basket);
 
-        foreach ($items as $item) {
-            $data[$item->getBasketCode()] = [
-                'MEASURE_RATIO' => $item->getField('MEASURE_RATIO') ?: 1,
-            ];
+        if (!$result->isSuccess()) {
+            return [];
         }
 
-        return getRatio($data);
+        $ratioList = $result->get('RATIO_LIST') ?: [];
+
+        return array_map(
+            static fn($ratio) => (float) $ratio,
+            $ratioList
+        );
     }
 
     private function calculateVatValue(Sale\BasketItem $item): float
