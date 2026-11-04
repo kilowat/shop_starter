@@ -4,7 +4,13 @@ declare(strict_types=1);
 
 namespace App\Helper\Http\Mapper;
 
+use App\Helper\Http\Validator\RequiredOn;
+use Bitrix\Main\DI\ServiceLocator;
+use Bitrix\Main\Engine\AutoWire\BinderArgumentException;
+use Bitrix\Main\Error;
 use Bitrix\Main\HttpRequest;
+use Bitrix\Main\Validation\ValidationResult;
+use Bitrix\Main\Validation\ValidationService;
 use ReflectionClass;
 use ReflectionNamedType;
 use ReflectionParameter;
@@ -15,11 +21,90 @@ trait RequestMapper
 {
     /**
      * Создаёт DTO и заполняет его данными HTTP-запроса.
+     *
+     * Если не передано поле с #[RequiredOn], бросает BinderArgumentException
+     * (штатный автовайр превратит её в ошибки ответа; при ручном вызове лови сам).
+     *
+     * @throws BinderArgumentException
      */
     public static function fromRequest(HttpRequest $request): static
     {
         $data = self::getRequestData($request);
 
+        $errors = self::checkPresence($data, strtoupper($request->getRequestMethod()));
+
+        if ($errors !== []) {
+            throw new BinderArgumentException(
+                'Required fields are missing',
+                addedErrorsFromClosure: $errors
+            );
+        }
+
+        return self::build($data);
+    }
+
+    /**
+     * Ручная валидация (вне автовайра) - тот же штатный ValidationService.
+     * Правила #[NotEmptyOn] сами смотрят на метод запроса.
+     */
+    public function validateRequest(): ValidationResult
+    {
+        /** @var ValidationService $service */
+        $service = ServiceLocator::getInstance()->get('main.validation.service');
+
+        return $service->validate($this);
+    }
+
+    /**
+     * Проверка #[RequiredOn]: поле должно быть передано в запросе (значение не важно).
+     * Без состояния в DTO, поэтому трейт совместим с readonly class.
+     *
+     * @param array<string, mixed> $data
+     * @return Error[]
+     */
+    private static function checkPresence(array $data, string $method): array
+    {
+        $errors = [];
+
+        foreach ((new ReflectionClass(static::class))->getProperties(ReflectionProperty::IS_PUBLIC) as $property) {
+            if ($property->isStatic()) {
+                continue;
+            }
+
+            $attributes = $property->getAttributes(RequiredOn::class);
+
+            if ($attributes === []) {
+                continue;
+            }
+
+            /** @var RequiredOn $rule */
+            $rule = $attributes[0]->newInstance();
+
+            if (!$rule->appliesTo($method)) {
+                continue;
+            }
+
+            $key = self::getPropertyKey($property);
+
+            $missing = !array_key_exists($key, $data)
+                || (!$rule->allowNull && $data[$key] === null);
+
+            if ($missing) {
+                $errors[] = new Error(
+                    $rule->message ?? "Поле «{$key}» обязательно для передачи",
+                    $key
+                );
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private static function build(array $data): static
+    {
         $reflection = new ReflectionClass(static::class);
         $constructor = $reflection->getConstructor();
 
