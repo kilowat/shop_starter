@@ -21,6 +21,9 @@ final class Params
 
     public const PAGE_SIZE = 12;
 
+    /** Страница, на которой живёт список (нужна пагинации в ajax-ответе). */
+    public const LIST_PAGE_URL = '/catalog/';
+
     /**
      * Параметры bitrix:catalog.smart.filter.
      */
@@ -46,11 +49,11 @@ final class Params
     /**
      * Параметры bitrix:catalog.section.
      */
-    public static function section(?string $sortCode = null): array
+    public static function section(?string $sortCode = null, ?string $basePage = null): array
     {
         $sort = Sort::resolve($sortCode);
 
-        return [
+        $params = [
             'IBLOCK_TYPE' => self::IBLOCK_TYPE,
             'IBLOCK_ID' => self::IBLOCK_ID,
             'SECTION_ID' => '',
@@ -98,5 +101,12 @@ final class Params
             'DISPLAY_TOP_PAGER' => 'N',
             'DISPLAY_BOTTOM_PAGER' => 'Y',
         ];
+
+        // Ссылки пагинации должны вести на настоящую страницу, а не на api-эндпоинт
+        if ($basePage !== null) {
+            $params['CURRENT_BASE_PAGE'] = $basePage;
+        }
+
+        return $params;
     }
 }

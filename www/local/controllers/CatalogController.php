@@ -48,7 +48,7 @@ final class CatalogController extends Controller
         $html = Renderer::component(
             'bitrix:catalog.section',
             'shop_bootstrap',
-            Params::section($sortCode)
+            Params::section($sortCode, $this->basePage($request))
         );
 
         return [
@@ -91,6 +91,25 @@ final class CatalogController extends Controller
      * Включить смарт-фильтр без вывода: нужен ради $GLOBALS['arrFilter']
      * и данных SIGNA_DATA (их складывает result_modifier шаблона).
      */
+    /**
+     * Адрес настоящей страницы каталога с текущими фильтром и сортировкой —
+     * чтобы ссылки пагинации вели на неё, а не на api-эндпоинт.
+     */
+    private function basePage(\Bitrix\Main\HttpRequest $request): string
+    {
+        $params = [];
+
+        foreach ($request->getQueryList()->toArray() as $key => $value) {
+            if ($key === 'sort' || $key === 'set_filter' || str_starts_with($key, 'arrFilter')) {
+                $params[$key] = $value;
+            }
+        }
+
+        $query = http_build_query($params);
+
+        return Params::LIST_PAGE_URL . ($query !== '' ? '?' . $query : '');
+    }
+
     private function prepareFilter(): void
     {
         // Список ждёт от фильтра только $GLOBALS['arrFilter'] — общий подсчёт не нужен
