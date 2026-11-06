@@ -12,9 +12,6 @@
         return;
     }
 
-    /** Имя параметра постраничной навигации — из разметки компонента списка. */
-    const pageParam = () => document.querySelector('[data-page-param]')?.dataset.pageParam || 'PAGEN_1';
-
     signa.component('catalog-sort', ({ html, prop, computed }) => {
         const sorts = prop('sorts', Array, []);
         const current = computed(() => signa.location.query.value.sort || 'default');
@@ -27,7 +24,6 @@
                     class="form-select form-select-sm w-auto"
                     onchange=${(event) => signa.location.set({
                         sort: event.target.value === 'default' ? null : event.target.value,
-                        [pageParam()]: null,
                     })}
                 >
                     ${sorts.value.map((sort) => html`

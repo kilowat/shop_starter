@@ -51,8 +51,18 @@
 
     const isRangeItem = (item) => Boolean(item && item.VALUES && item.VALUES.MIN && item.VALUES.MAX);
 
-    /** Имя параметра постраничной навигации — из разметки компонента списка. */
-    const pageParam = () => document.querySelector('[data-page-param]')?.dataset.pageParam || 'PAGEN_1';
+    /**
+     * При применении фильтра каталог всегда открывается с первой страницы,
+     * поэтому из URL просто выбрасываем любые параметры пагинации (PAGEN_1, PAGEN_2, …).
+     */
+    const PAGE_PARAMS = /^PAGEN_/;
+
+    /** Изменения для signa.location.set: все PAGEN_* -> null (удалить из URL). */
+    const excludePageParams = (query) => Object.fromEntries(
+        Object.keys(query || {})
+            .filter((key) => PAGE_PARAMS.test(key))
+            .map((key) => [key, null])
+    );
 
     // --------------------------------------------------------------- store
     signa.state('smartFilter', ({ signal, computed, effect }) => {
@@ -397,7 +407,10 @@
          * обновятся сами — их слушает catalogState.
          */
         const apply = (withScroll = true) => {
-            signa.location.set(Object.assign(draftParams(), { [pageParam()]: null }));
+            signa.location.set(Object.assign(
+                draftParams(),
+                excludePageParams(signa.location.query.value)
+            ));
 
             if (withScroll) {
                 document.querySelector('smart-filter')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -408,7 +421,7 @@
          * Сбросить фильтр: снимаем все arrFilter-параметры и возвращаемся на первую страницу.
          */
         const reset = () => {
-            const params = { [pageParam()]: null, set_filter: null };
+            const params = { set_filter: null };
 
             items.forEach((item) => {
                 Object.values(item.VALUES || {}).forEach((value) => {
@@ -429,7 +442,7 @@
                 hi: range.boundMax
             }));
 
-            signa.location.set(params);
+            signa.location.set(Object.assign(params, excludePageParams(signa.location.query.value)));
 
             // URL мог не измениться (фильтр не был применён) — пересчитываем счётчики
             if (Object.keys(selectionBefore).length === 0) {
