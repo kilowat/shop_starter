@@ -92,3 +92,16 @@
     font-size: 0.75rem;
     color: var(--bs-secondary-color);
 }
+
+/* ---------- Выбранные значения фильтра ---------- */
+
+.catalog-selected {
+    flex: 1 1 320px;
+}
+
+/* чипы растягиваются, заполняя ряд, и переносятся на следующую строку */
+.catalog-selected .btn {
+    flex: 1 1 auto;
+    justify-content: center;
+    white-space: nowrap;
+}

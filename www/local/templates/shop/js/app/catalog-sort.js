@@ -20,7 +20,7 @@
         const current = computed(() => signa.location.query.value.sort || 'default');
 
         return () => html`
-            <div class="d-flex align-items-center gap-2 mb-3">
+            <div class="d-flex align-items-center gap-2">
                 <label class="small text-muted mb-0" for="catalog-sort-select">Сортировка</label>
                 <select
                     id="catalog-sort-select"

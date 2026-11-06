@@ -119,6 +119,18 @@
         const isLoading = signal(false);
 
         const isChecked = (controlName) => Object.prototype.hasOwnProperty.call(selection.value, controlName);
+
+        // CONTROL_NAME -> подпись значения и группа (для чипов)
+        const labels = {};
+
+        items.forEach((item) => {
+            Object.values(item.VALUES || {}).forEach((value) => {
+                labels[value.CONTROL_NAME] = {
+                    groupName: item.NAME,
+                    text: value.VALUE
+                };
+            });
+        });
         const counter = (controlName) => counts.value[controlName];
 
         /**
@@ -303,9 +315,17 @@
             const query = signa.location.query.value || {};
             const nextSelection = {};
 
+            // сначала сохраняем порядок, в котором пользователь заполнял фильтр
+            Object.keys(selection.peek()).forEach((controlName) => {
+                if (query[controlName] !== undefined) {
+                    nextSelection[controlName] = query[controlName];
+                }
+            });
+
+            // остальное (back/forward, ссылка с фильтром) — в порядке разметки
             items.forEach((item) => {
                 Object.values(item.VALUES || {}).forEach((value) => {
-                    if (query[value.CONTROL_NAME] !== undefined) {
+                    if (query[value.CONTROL_NAME] !== undefined && !(value.CONTROL_NAME in nextSelection)) {
                         nextSelection[value.CONTROL_NAME] = query[value.CONTROL_NAME];
                     }
                 });
@@ -319,19 +339,16 @@
         });
 
         const selected = computed(() => {
-            const result = [];
+            // порядок — как пользователь заполнял фильтр (порядок ключей в selection)
+            const result = Object.keys(selection.value).map((controlName) => {
+                const label = labels[controlName] || { groupName: '', text: controlName };
 
-            items.forEach((item) => {
-                Object.values(item.VALUES || {}).forEach((value) => {
-                    if (isChecked(value.CONTROL_NAME)) {
-                        result.push({
-                            kind: 'value',
-                            key: value.CONTROL_NAME,
-                            groupName: item.NAME,
-                            text: value.VALUE
-                        });
-                    }
-                });
+                return {
+                    kind: 'value',
+                    key: controlName,
+                    groupName: label.groupName,
+                    text: label.text
+                };
             });
 
             ranges.value.forEach((range) => {
@@ -349,23 +366,42 @@
             return result;
         });
 
+        /**
+         * Крестик на чипе: убираем значение и сразу применяем фильтр,
+         * но без скролла страницы.
+         */
         const removeChip = (chip) => {
             if (chip.kind === 'range') {
-                resetRange(chip.key);
-                return;
+                const index = ranges.value.findIndex((range) => range.code === chip.key);
+
+                if (index < 0) {
+                    return;
+                }
+
+                const list = ranges.value.slice();
+
+                list[index] = Object.assign({}, list[index], {
+                    lo: list[index].boundMin,
+                    hi: list[index].boundMax
+                });
+                ranges.value = list;
+            } else {
+                clearSelection(chip.key);
             }
 
-            clearSelection(chip.key);
-            refreshCounts();
+            apply(false);
         };
 
         /**
          * Применить фильтр: пишем черновик в URL. Список, сортировка и пагинация
          * обновятся сами — их слушает catalogState.
          */
-        const apply = () => {
+        const apply = (withScroll = true) => {
             signa.location.set(Object.assign(draftParams(), { [pageParam()]: null }));
-            document.querySelector('smart-filter')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+            if (withScroll) {
+                document.querySelector('smart-filter')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         };
 
         /**
@@ -570,22 +606,6 @@
             </div>
         `;
 
-        const renderSelected = () => html`
-            <div class="smart-filter__selected d-flex flex-wrap gap-2 mb-3">
-                ${filter.selected.value.map((chip) => html`
-                    <button
-                        type="button"
-                        class="btn btn-sm btn-light border d-inline-flex align-items-center gap-1"
-                        onclick=${() => filter.removeChip(chip)}
-                    >
-                        <span class="text-muted small">${chip.groupName}:</span>
-                        <span>${chip.text}</span>
-                        <span aria-hidden="true">✕</span>
-                    </button>
-                `)}
-            </div>
-        `;
-
         return () => html`
             <div class=${'smart-filter card border-0 shadow-sm' + (filter.isLoading.value ? ' is-loading' : '')}>
                 <div class="card-header bg-white d-flex align-items-center justify-content-between py-3">
@@ -600,7 +620,6 @@
                 </div>
 
                 <div class="card-body">
-                    ${filter.selected.value.length > 0 ? renderSelected() : null}
                     ${filter.items.map((item) => renderGroup(item))}
                     ${filter.ranges.value.map((range) => renderRange(range))}
 
