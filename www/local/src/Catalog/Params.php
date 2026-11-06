@@ -24,6 +24,12 @@ final class Params
     /** Страница, на которой живёт список (нужна пагинации в ajax-ответе). */
     public const LIST_PAGE_URL = '/catalog/';
 
+    /** Куда компоненту фильтра отправлять запросы за счётчиками. */
+    public const FILTER_URL = '/api/catalog/filter';
+
+    /** Куда компоненту списка отправлять запросы за фрагментом. */
+    public const LIST_URL = '/api/catalog/list';
+
     /**
      * Параметры bitrix:catalog.smart.filter.
      */
@@ -34,6 +40,7 @@ final class Params
             'IBLOCK_ID' => self::IBLOCK_ID,
             'SECTION_ID' => '',
             'FILTER_NAME' => self::FILTER_NAME,
+            'COUNTS_URL' => self::FILTER_URL,
             'PRICE_CODE' => self::PRICE_CODE,
             'CACHE_TYPE' => 'A',
             'CACHE_TIME' => '36000000',
@@ -67,6 +74,7 @@ final class Params
             'CACHE_TYPE' => 'A',
             'CACHE_TIME' => '3600',
             'CACHE_GROUPS' => 'Y',
+            'LIST_URL' => self::LIST_URL,
             'PAGE_ELEMENT_COUNT' => (string)self::PAGE_SIZE,
             'LINE_ELEMENT_COUNT' => '3',
             'ELEMENT_SORT_FIELD' => $sort['field'],

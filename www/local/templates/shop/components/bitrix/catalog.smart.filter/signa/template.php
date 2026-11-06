@@ -42,4 +42,4 @@ $signaData = \Bitrix\Main\Web\Json::encode(
 );
 ?>
 <script>window.__SMART_FILTER__ = <?= $signaData ?>;</script>
-<smart-filter data-counts-url="/api/catalog/filter"></smart-filter>
+<smart-filter data-counts-url="<?= htmlspecialcharsbx((string)($arParams['COUNTS_URL'] ?? '')) ?>"></smart-filter>

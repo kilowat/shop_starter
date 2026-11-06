@@ -51,6 +51,9 @@
 
     const isRangeItem = (item) => Boolean(item && item.VALUES && item.VALUES.MIN && item.VALUES.MAX);
 
+    /** Имя параметра постраничной навигации — из разметки компонента списка. */
+    const pageParam = () => document.querySelector('[data-page-param]')?.dataset.pageParam || 'PAGEN_1';
+
     // --------------------------------------------------------------- store
     signa.state('smartFilter', ({ signal, computed, effect }) => {
         const source = window.__SMART_FILTER__ || {};
@@ -361,14 +364,15 @@
          * обновятся сами — их слушает catalogState.
          */
         const apply = () => {
-            signa.location.set(Object.assign(draftParams(), { PAGEN_1: null }));
+            signa.location.set(Object.assign(draftParams(), { [pageParam()]: null }));
+            document.querySelector('smart-filter')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         };
 
         /**
          * Сбросить фильтр: снимаем все arrFilter-параметры и возвращаемся на первую страницу.
          */
         const reset = () => {
-            const params = { PAGEN_1: null, set_filter: null };
+            const params = { [pageParam()]: null, set_filter: null };
 
             items.forEach((item) => {
                 Object.values(item.VALUES || {}).forEach((value) => {
@@ -426,8 +430,6 @@
         const sliderNodes = new Map();
         const hasSlider = typeof window.noUiSlider !== 'undefined';
 
-        // точное число товаров и актуальные счётчики — сразу при загрузке страницы
-        filter.refreshCounts();
 
         const getSliderNode = (range) => {
             if (!sliderNodes.has(range.code)) {

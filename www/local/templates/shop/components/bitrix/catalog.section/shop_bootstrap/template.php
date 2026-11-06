@@ -14,6 +14,11 @@ if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) {
     die();
 }
 
+// Имя параметра постраничной навигации (PAGEN_1) — из объекта пагинации,
+// чтобы JS не хардкодил его у себя
+$nav = $arResult['NAV_RESULT'] ?? null;
+$pageParam = 'PAGEN_' . (int)($nav && $nav->NavNum ? $nav->NavNum : 1);
+
 
 /**
  * Картинка товара: PREVIEW_PICTURE, при отсутствии — DETAIL_PICTURE.
@@ -113,11 +118,11 @@ $getPrice = static function (array $item): array {
 };
 ?>
 <?php if (empty($arResult['ITEMS'])): ?>
-    <div class="alert alert-light border mb-0" role="alert">
+    <div class="alert alert-light border mb-0" role="alert" data-page-param="<?= $pageParam ?>">
         По выбранным условиям товары не найдены.
     </div>
 <?php else: ?>
-    <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-3 g-3">
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-3 g-3" data-page-param="<?= $pageParam ?>">
         <?php foreach ($arResult['ITEMS'] as $arItem):
             $itemName = (string)$arItem['NAME'];
             $detailUrl = (string)($arItem['DETAIL_PAGE_URL'] ?? '');

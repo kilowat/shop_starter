@@ -15,11 +15,13 @@
     }
 
     const LIST = '[data-catalog-list]';
-    const PAGE = 'PAGEN_1';
+
+    /** Имя параметра постраничной навигации — из разметки компонента списка. */
+    const pageParam = () => document.querySelector(`${LIST} [data-page-param]`)?.dataset.pageParam || 'PAGEN_1';
 
     // из каких параметров URL состоит «применённое» состояние каталога
     const isCatalogParam = (key) => (
-        key === PAGE || key === 'sort' || key === 'set_filter' || key.startsWith('arrFilter')
+        key === pageParam() || key === 'sort' || key === 'set_filter' || key.startsWith('arrFilter')
     );
 
     signa.state('catalogState', ({ signal, computed, effect }) => {
@@ -103,14 +105,14 @@
                 return;
             }
 
-            const page = new URL(link.href, window.location.origin).searchParams.get(PAGE);
+            const page = new URL(link.href, window.location.origin).searchParams.get(pageParam());
 
             if (!page) {
                 return;
             }
 
             event.preventDefault();
-            signa.location.set({ [PAGE]: page });
+            signa.location.set({ [pageParam()]: page });
             link.closest(LIST).scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
     };
