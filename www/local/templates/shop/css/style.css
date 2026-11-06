@@ -1,0 +1,26 @@
+/* Дополнительные стили шаблона shop.
+   Всё, что можно, — держим на утилитах Bootstrap 5.3. */
+
+.product-card {
+    transition: box-shadow 0.15s ease-in-out;
+}
+
+.product-card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08);
+}
+
+/* Карточка товара: одинаковая высота картинки независимо от пропорций фото */
+.product-card__img {
+    width: 100%;
+    height: 220px;
+    object-fit: contain;
+    background-color: var(--bs-tertiary-bg, #f8f9fa);
+}
+
+/* Сайдбар фильтра прилипает при прокрутке на больших экранах */
+@media (min-width: 992px) {
+    .catalog-sidebar {
+        position: sticky;
+        top: 1rem;
+    }
+}
