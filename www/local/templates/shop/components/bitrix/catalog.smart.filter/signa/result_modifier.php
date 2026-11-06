@@ -58,3 +58,30 @@ $arResult['SIGNA_DATA'] = [
     'ELEMENT_COUNT' => $arResult['ELEMENT_COUNT'] ?? null,
     'HIDDEN' => $decode($arResult['HIDDEN'] ?? []),
 ];
+
+// Общее число товаров по собранному фильтру ($GLOBALS[FILTER_NAME] уже заполнен компонентом).
+// Считаем, только когда число реально нужно: списку оно не требуется
+if (($arParams['SKIP_COUNT'] ?? 'N') !== 'Y') {
+    $filter = $GLOBALS[$arResult['FILTER_NAME'] ?? ''] ?? [];
+
+    if (is_array($filter)) {
+        $filter = array_merge([
+            'IBLOCK_ID' => (int)$arParams['IBLOCK_ID'],
+            'ACTIVE' => 'Y',
+            'ACTIVE_DATE' => 'Y',
+            'CHECK_PERMISSIONS' => 'N',
+            'INCLUDE_SUBSECTIONS' => 'Y',
+        ], $filter);
+
+        if (\Bitrix\Main\Loader::includeModule('catalog')) {
+            $filter = \CProductQueryBuilder::convertOldFilter($filter);
+        }
+    }
+
+    // Пустой GROUP BY переключает GetList в режим COUNT(DISTINCT BE.ID)
+    $arResult['TOTAL_COUNT'] = is_array($filter)
+        ? (int)\CIBlockElement::GetList([], $filter, [], false)
+        : 0;
+}
+
+$arResult['SIGNA_DATA']['TOTAL'] = (int)($arResult['TOTAL_COUNT'] ?? 0);

@@ -52,18 +52,10 @@
     const isRangeItem = (item) => Boolean(item && item.VALUES && item.VALUES.MIN && item.VALUES.MAX);
 
     // --------------------------------------------------------------- store
-    signa.state('smartFilter', ({ signal, computed }) => {
+    signa.state('smartFilter', ({ signal, computed, effect }) => {
         const source = window.__SMART_FILTER__ || {};
 
-        const data = signal({
-            ITEMS: source.ITEMS || {},
-            PRICES: source.PRICES || {},
-            FILTER_NAME: source.FILTER_NAME || '',
-            FORM_ACTION: source.FORM_ACTION || '',
-            FILTER_URL: source.FILTER_URL || ''
-        });
-
-        const buildItems = () => Object.values(data.value.ITEMS || {}).filter(
+        const items = Object.values(source.ITEMS || {}).filter(
             (item) => !isRangeItem(item) && Object.keys(item.VALUES || {}).length > 0
         );
 
@@ -78,7 +70,6 @@
                 return {
                     code: item.CODE,
                     name: item.NAME,
-                    isPrice: Boolean(item.PRICE),
                     currency: min.CURRENCY || '',
                     decimals: Number(item.DECIMALS || 0),
                     minName: min.CONTROL_NAME,
@@ -116,104 +107,111 @@
             return selection;
         };
 
-        const items = computed(() => buildItems());
-        const ranges = signal(buildRanges(data.value.ITEMS));
-        const selection = signal(buildSelection(data.value.ITEMS));
-        const count = signal(isFilled(source.ELEMENT_COUNT) ? Number(source.ELEMENT_COUNT) : null);
+        const ranges = signal(buildRanges(source.ITEMS));
+        const selection = signal(buildSelection(source.ITEMS));
+
+        // { CONTROL_NAME: число товаров } — обновляется живыми запросами
+        const counts = signal(buildCounts(source.ITEMS));
+        const total = signal(Number(source.TOTAL || 0));
         const isLoading = signal(false);
 
         const isChecked = (controlName) => Object.prototype.hasOwnProperty.call(selection.value, controlName);
+        const counter = (controlName) => counts.value[controlName];
 
-        const baseUrl = () => data.value.FORM_ACTION || window.location.pathname;
+        /**
+         * Параметры фильтра из черновика: значение или null (снять).
+         * null нужен, чтобы «Применить» умело убирать снятые значения из URL.
+         */
+        const draftParams = () => {
+            const params = {};
 
-        const buildQuery = () => {
-            const params = new URLSearchParams();
-
-            params.set('set_filter', 'y');
-
-            Object.entries(selection.value).forEach(([name, value]) => {
-                params.set(name, value);
+            items.forEach((item) => {
+                Object.values(item.VALUES || {}).forEach((value) => {
+                    params[value.CONTROL_NAME] = isChecked(value.CONTROL_NAME) ? 'Y' : null;
+                });
             });
 
             ranges.value.forEach((range) => {
-                if (range.lo > range.boundMin) {
-                    params.set(range.minName, String(range.lo));
-                }
-                if (range.hi < range.boundMax) {
-                    params.set(range.maxName, String(range.hi));
-                }
+                params[range.minName] = range.lo > range.boundMin ? String(range.lo) : null;
+                params[range.maxName] = range.hi < range.boundMax ? String(range.hi) : null;
             });
+
+            const hasFilter = Object.keys(params).some((name) => params[name] !== null);
+
+            params.set_filter = hasFilter ? 'y' : null;
 
             return params;
         };
 
-        const url = () => {
-            const base = baseUrl();
-            const separator = base.indexOf('?') > -1 ? '&' : '?';
-
-            return base + separator + buildQuery().toString();
-        };
-
         // ----------------------------------------------------------- счётчики
-        const applyCounts = (result) => {
-            if (!result || !result.ITEMS) {
+        /** Применить данные из arResult: счётчики по значениям и общее число товаров. */
+        const applyFilterData = (filter) => {
+            if (!filter) {
                 return;
             }
 
-            if (isFilled(result.ELEMENT_COUNT)) {
-                count.value = Number(result.ELEMENT_COUNT);
-            }
-
-            const nextItems = Object.assign({}, data.value.ITEMS);
-
-            Object.keys(nextItems).forEach((id) => {
-                const freshItem = result.ITEMS[id];
-
-                if (!freshItem || !freshItem.VALUES) {
-                    return;
-                }
-
-                const values = {};
-
-                Object.keys(nextItems[id].VALUES || {}).forEach((key) => {
-                    const value = nextItems[id].VALUES[key];
-                    const freshValue = freshItem.VALUES[key];
-
-                    values[key] = freshValue && isFilled(freshValue.ELEMENT_COUNT)
-                        ? Object.assign({}, value, { ELEMENT_COUNT: freshValue.ELEMENT_COUNT })
-                        : value;
-                });
-
-                nextItems[id] = Object.assign({}, nextItems[id], { VALUES: values });
-            });
-
-            data.value = Object.assign({}, data.value, { ITEMS: nextItems });
+            counts.value = buildCounts(filter.ITEMS);
+            total.value = Number(filter.TOTAL || 0);
         };
 
-        let countsTimer = 0;
+        function buildCounts(sourceItems) {
+            const result = {};
 
-        const fetchCounts = () => {
+            Object.values(sourceItems || {}).forEach((item) => {
+                Object.values(item.VALUES || {}).forEach((value) => {
+                    if (value.CONTROL_NAME) {
+                        result[value.CONTROL_NAME] = Number(value.ELEMENT_COUNT || 0);
+                    }
+                });
+            });
+
+            return result;
+        }
+
+
+        let countsTimer = 0;
+        let countsRequest = 0;
+
+        /**
+         * Живые счётчики: считаем по черновику (что натыкано сейчас, а не что применено).
+         */
+        const refreshCounts = () => {
             window.clearTimeout(countsTimer);
 
-            countsTimer = window.setTimeout(() => {
-                const params = buildQuery();
-                const base = baseUrl();
-                const separator = base.indexOf('?') > -1 ? '&' : '?';
+            countsTimer = window.setTimeout(async () => {
+                const search = new URLSearchParams();
 
-                params.set('ajax', 'y');
+                Object.entries(draftParams()).forEach(([name, value]) => {
+                    if (value !== null && value !== undefined && value !== '') {
+                        search.set(name, value);
+                    }
+                });
+
+                const query = search.toString();
+                const node = document.querySelector('smart-filter');
+                const url = (node?.dataset.countsUrl || '/api/catalog/filter') + (query ? '?' + query : '');
+                const id = ++countsRequest;
+
                 isLoading.value = true;
 
-                fetch(base + separator + params.toString(), {
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                })
-                    .then((response) => response.json())
-                    .then((payload) => applyCounts(payload.result || payload))
-                    .catch((error) => {
-                        console.warn('[smart-filter] не удалось получить счётчики:', error);
-                    })
-                    .finally(() => {
-                        isLoading.value = false;
+                try {
+                    const response = await fetch(url, {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
                     });
+                    const payload = await response.json();
+
+                    if (id !== countsRequest || !payload || payload.status !== 'success') {
+                        return;
+                    }
+
+                    applyFilterData(payload.data.filter);
+                } catch (error) {
+                    console.warn('[smart-filter] не удалось получить счётчики:', error);
+                } finally {
+                    if (id === countsRequest) {
+                        isLoading.value = false;
+                    }
+                }
             }, 300);
         };
 
@@ -236,18 +234,7 @@
                 setSelection(controlName, 'Y');
             }
 
-            fetchCounts();
-        };
-
-        const clearGroup = (item) => {
-            const next = Object.assign({}, selection.value);
-
-            Object.values(item.VALUES || {}).forEach((value) => {
-                delete next[value.CONTROL_NAME];
-            });
-
-            selection.value = next;
-            fetchCounts();
+            refreshCounts();
         };
 
         const selectSingle = (item, controlName) => {
@@ -262,7 +249,7 @@
             }
 
             selection.value = next;
-            fetchCounts();
+            refreshCounts();
         };
 
         const setRangeValue = (code, handle, value) => {
@@ -305,13 +292,33 @@
                 hi: list[index].boundMax
             });
             ranges.value = list;
-            fetchCounts();
+            refreshCounts();
         };
+
+        // URL изменился (применили фильтр, back/forward) -> черновик подстраивается под него
+        effect(() => {
+            const query = signa.location.query.value || {};
+            const nextSelection = {};
+
+            items.forEach((item) => {
+                Object.values(item.VALUES || {}).forEach((value) => {
+                    if (query[value.CONTROL_NAME] !== undefined) {
+                        nextSelection[value.CONTROL_NAME] = query[value.CONTROL_NAME];
+                    }
+                });
+            });
+
+            selection.value = nextSelection;
+            ranges.value = ranges.peek().map((range) => Object.assign({}, range, {
+                lo: query[range.minName] !== undefined ? toNumber(query[range.minName]) : range.boundMin,
+                hi: query[range.maxName] !== undefined ? toNumber(query[range.maxName]) : range.boundMax
+            }));
+        });
 
         const selected = computed(() => {
             const result = [];
 
-            items.value.forEach((item) => {
+            items.forEach((item) => {
                 Object.values(item.VALUES || {}).forEach((value) => {
                     if (isChecked(value.CONTROL_NAME)) {
                         result.push({
@@ -346,40 +353,70 @@
             }
 
             clearSelection(chip.key);
-            fetchCounts();
+            refreshCounts();
         };
 
+        /**
+         * Применить фильтр: пишем черновик в URL. Список, сортировка и пагинация
+         * обновятся сами — их слушает catalogState.
+         */
         const apply = () => {
-            window.location.href = url();
+            signa.location.set(Object.assign(draftParams(), { PAGEN_1: null }));
         };
 
+        /**
+         * Сбросить фильтр: снимаем все arrFilter-параметры и возвращаемся на первую страницу.
+         */
         const reset = () => {
+            const params = { PAGEN_1: null, set_filter: null };
+
+            items.forEach((item) => {
+                Object.values(item.VALUES || {}).forEach((value) => {
+                    params[value.CONTROL_NAME] = null;
+                });
+            });
+
+            ranges.peek().forEach((range) => {
+                params[range.minName] = null;
+                params[range.maxName] = null;
+            });
+
+            const selectionBefore = selection.value;
+
             selection.value = {};
-            ranges.value = buildRanges(data.value.ITEMS);
-            window.location.href = baseUrl();
+            ranges.value = ranges.value.map((range) => Object.assign({}, range, {
+                lo: range.boundMin,
+                hi: range.boundMax
+            }));
+
+            signa.location.set(params);
+
+            // URL мог не измениться (фильтр не был применён) — пересчитываем счётчики
+            if (Object.keys(selectionBefore).length === 0) {
+                refreshCounts();
+            }
         };
 
         return {
-            data,
             items,
             ranges,
             selection,
             selected,
-            count,
+            counts,
+            total,
+            counter,
             isLoading,
             displayTypes: DISPLAY_TYPES,
             isChecked,
             toggle,
             selectSingle,
-            clearGroup,
             setRangeValue,
             resetRange,
             removeChip,
-            buildQuery,
-            url,
+            draftParams,
             apply,
             reset,
-            fetchCounts
+            refreshCounts
         };
     });
 
@@ -388,6 +425,9 @@
         const filter = states.smartFilter;
         const sliderNodes = new Map();
         const hasSlider = typeof window.noUiSlider !== 'undefined';
+
+        // точное число товаров и актуальные счётчики — сразу при загрузке страницы
+        filter.refreshCounts();
 
         const getSliderNode = (range) => {
             if (!sliderNodes.has(range.code)) {
@@ -433,7 +473,7 @@
                     filter.setRangeValue(range.code, handle, toNumber(values[handle]));
                 });
 
-                node.noUiSlider.on('change', () => filter.fetchCounts());
+                node.noUiSlider.on('change', () => filter.refreshCounts());
             });
         };
 
@@ -462,20 +502,30 @@
             });
         });
 
-        const renderCounter = (value) => (isFilled(value.ELEMENT_COUNT)
-            ? html`<span class="smart-filter__count">${value.ELEMENT_COUNT}</span>`
-            : null);
+        const renderCounter = (value) => {
+            const number = filter.counter(value.CONTROL_NAME);
 
-        const renderCheckboxes = (item) => html`
+            return isFilled(number) ? html`<span class="smart-filter__count">${number}</span>` : null;
+        };
+
+        const isDropdown = (item) => (
+            item.DISPLAY_TYPE === DISPLAY_TYPES.DROPDOWN
+            || item.DISPLAY_TYPE === DISPLAY_TYPES.DROPDOWN_WITH_PICTURES_AND_LABELS
+        );
+
+        const renderChoices = (item, multiple) => html`
             <div class="d-flex flex-column gap-2">
                 ${Object.values(item.VALUES || {}).map((value) => html`
                     <div class="form-check mb-0">
                         <input
                             class="form-check-input"
-                            type="checkbox"
+                            type=${multiple ? 'checkbox' : 'radio'}
+                            name=${'sf-' + item.CODE}
                             id=${'sf-' + value.CONTROL_ID}
                             .checked=${filter.isChecked(value.CONTROL_NAME)}
-                            onchange=${() => filter.toggle(value.CONTROL_NAME)}
+                            onchange=${() => (multiple
+                                ? filter.toggle(value.CONTROL_NAME)
+                                : filter.selectSingle(item, value.CONTROL_NAME))}
                         >
                         <label class="form-check-label d-flex align-items-center gap-1" for=${'sf-' + value.CONTROL_ID}>
                             ${isFilled(value.PICT)
@@ -489,88 +539,34 @@
             </div>
         `;
 
-        const renderRadio = (item) => html`
-            <div class="d-flex flex-column gap-2">
-                ${Object.values(item.VALUES || {}).map((value) => html`
-                    <div class="form-check mb-0">
-                        <input
-                            class="form-check-input"
-                            type="radio"
-                            name=${'sf-' + item.CODE}
-                            id=${'sf-' + value.CONTROL_ID}
-                            .checked=${filter.isChecked(value.CONTROL_NAME)}
-                            onchange=${() => filter.selectSingle(item, value.CONTROL_NAME)}
-                        >
-                        <label class="form-check-label d-flex align-items-center gap-1" for=${'sf-' + value.CONTROL_ID}>
-                            <span>${value.VALUE}</span>
-                            ${renderCounter(value)}
-                        </label>
-                    </div>
-                `)}
-            </div>
-        `;
-
         const renderDropdown = (item) => html`
-            <select
-                class="form-select form-select-sm"
-                onchange=${(event) => filter.selectSingle(item, event.target.value)}
-            >
+            <select class="form-select form-select-sm" onchange=${(event) => filter.selectSingle(item, event.target.value)}>
                 <option value="">Все</option>
                 ${Object.values(item.VALUES || {}).map((value) => html`
                     <option value=${value.CONTROL_NAME} .selected=${filter.isChecked(value.CONTROL_NAME)}>
-                        ${value.VALUE}${isFilled(value.ELEMENT_COUNT) ? ' (' + value.ELEMENT_COUNT + ')' : ''}
+                        ${value.VALUE}${isFilled(filter.counter(value.CONTROL_NAME))
+                            ? ' (' + filter.counter(value.CONTROL_NAME) + ')'
+                            : ''}
                     </option>
                 `)}
             </select>
         `;
 
-        const renderGroup = (item) => {
-            const type = item.DISPLAY_TYPE;
-            let content = renderCheckboxes(item);
+        const renderGroup = (item) => html`
+            <div class="smart-filter__group mb-4">
+                <div class="smart-filter__group-title fw-semibold mb-2">${item.NAME}</div>
+                ${isDropdown(item)
+                    ? renderDropdown(item)
+                    : renderChoices(item, item.DISPLAY_TYPE !== DISPLAY_TYPES.RADIO_BUTTONS)}
+            </div>
+        `;
 
-            if (type === DISPLAY_TYPES.DROPDOWN || type === DISPLAY_TYPES.DROPDOWN_WITH_PICTURES_AND_LABELS) {
-                content = renderDropdown(item);
-            } else if (type === DISPLAY_TYPES.RADIO_BUTTONS) {
-                content = renderRadio(item);
-            }
-
-            return html`
-                <div class="smart-filter__group mb-4">
-                    <div class="smart-filter__group-title fw-semibold mb-2">${item.NAME}</div>
-                    ${content}
-                </div>
-            `;
-        };
-
-        const renderRange = (range) => {
-            const useSlider = hasSlider && range.boundMax > range.boundMin;
-
-            return html`
-                <div class="smart-filter__group mb-4">
-                    <div class="smart-filter__group-title fw-semibold mb-2">${range.name}</div>
-
-                    ${useSlider
-                        ? html`<div class="px-2 pt-1">${getSliderNode(range)}</div>`
-                        : html`
-                            <div class="d-flex align-items-center gap-2">
-                                <input
-                                    class="form-control form-control-sm"
-                                    type="number"
-                                    .value=${String(range.lo)}
-                                    onchange=${(event) => filter.setRangeValue(range.code, 0, toNumber(event.target.value))}
-                                >
-                                <span class="text-muted">—</span>
-                                <input
-                                    class="form-control form-control-sm"
-                                    type="number"
-                                    .value=${String(range.hi)}
-                                    onchange=${(event) => filter.setRangeValue(range.code, 1, toNumber(event.target.value))}
-                                >
-                            </div>
-                        `}
-                </div>
-            `;
-        };
+        const renderRange = (range) => html`
+            <div class="smart-filter__group mb-4">
+                <div class="smart-filter__group-title fw-semibold mb-2">${range.name}</div>
+                <div class="px-2 pt-1">${getSliderNode(range)}</div>
+            </div>
+        `;
 
         const renderSelected = () => html`
             <div class="smart-filter__selected d-flex flex-wrap gap-2 mb-3">
@@ -603,11 +599,11 @@
 
                 <div class="card-body">
                     ${filter.selected.value.length > 0 ? renderSelected() : null}
-                    ${filter.items.value.map((item) => renderGroup(item))}
+                    ${filter.items.map((item) => renderGroup(item))}
                     ${filter.ranges.value.map((range) => renderRange(range))}
 
                     <button type="button" class="btn btn-primary w-100 mt-2" onclick=${() => filter.apply()}>
-                        Показать${filter.count.value !== null ? ' (' + filter.count.value + ')' : ''}
+                        Показать${filter.total.value ? ' (' + filter.total.value + ')' : ''}
                     </button>
                 </div>
             </div>

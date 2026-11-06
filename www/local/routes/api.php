@@ -2,6 +2,7 @@
 
 use Bitrix\Main\Routing\RoutingConfigurator;
 use Controllers\BasketController;
+use Controllers\CatalogController;
 use Controllers\AuthController;
 
 return static function (RoutingConfigurator $routes): void {
@@ -17,4 +18,7 @@ return static function (RoutingConfigurator $routes): void {
     $routes->post('/api/basket/coupon/remove', [BasketController::class, 'removeCoupon']);
 
     $routes->get('/api/auth/login', [AuthController::class, 'login']);
+
+    $routes->get('/api/catalog/filter', [CatalogController::class, 'filter']);
+    $routes->get('/api/catalog/list', [CatalogController::class, 'list']);
 };
