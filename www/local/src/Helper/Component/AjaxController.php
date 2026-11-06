@@ -75,6 +75,24 @@ abstract class AjaxController extends Controller
     }
 
     /**
+     * Отрендерить компонент, параметры которого пришли в подписи с другим ключом.
+     *
+     * @return bool удалось ли (false — подписи нет или она не наша)
+     */
+    final protected function renderSigned(string $component, string $postKey): bool
+    {
+        $signed = $this->signedParams($component, $postKey);
+
+        if ($signed === null) {
+            return false;
+        }
+
+        $this->renderOnly($component, $signed);
+
+        return true;
+    }
+
+    /**
      * Параметры компонента из подписанного токена.
      *
      * @param string $postKey имя поля в POST с токеном
@@ -103,12 +121,36 @@ abstract class AjaxController extends Controller
         return AjaxJson::createError($errors);
     }
 
+    /**
+     * Адрес страницы с текущими параметрами запроса (кроме постраничной навигации).
+     */
+    private function pageUrl(array $params): string
+    {
+        $path = (string)(parse_url((string)($params['CURRENT_BASE_PAGE'] ?? '/'), PHP_URL_PATH) ?: '/');
+        $query = [];
+
+        foreach ($this->getRequest()->getQueryList()->toArray() as $key => $value) {
+            if (!str_starts_with($key, 'PAGEN_')) {
+                $query[$key] = $value;
+            }
+        }
+
+        $search = http_build_query($query);
+
+        return $path . ($search !== '' ? '?' . $search : '');
+    }
+
     private function render(string $component, array $signed, array $dataKeys = []): Component
     {
         $this->prepare();
 
         $template = (string)$signed['template'];
         $params = Signer::attach($component, $template, (array)$signed['params']);
+
+        // у компонентов с пагинацией ссылки должны вести на страницу, а не на api
+        if (isset($params['CURRENT_BASE_PAGE'])) {
+            $params['CURRENT_BASE_PAGE'] = $this->pageUrl($params);
+        }
 
         return new Component($component, $template, $params, $dataKeys);
     }

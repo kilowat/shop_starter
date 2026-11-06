@@ -213,24 +213,25 @@
                 });
 
                 const node = document.querySelector('smart-filter');
-                const url = node?.dataset.countsUrl || '/api/catalog/filter';
+                const query = search.toString();
+                const url = (node?.dataset.countsUrl || '/api/catalog/filter') + (query ? '?' + query : '');
+                const wrapper = document.querySelector('[data-catalog-list]');
                 const id = ++countsRequest;
 
-                if (node) {
-                    const wrapper = document.querySelector('[data-catalog-list]');
-
-                    search.set('sessid', wrapper?.dataset.sessid
+                // фильтр читает значения из query, подпись и sessid — в теле
+                const body = new URLSearchParams({
+                    sessid: wrapper?.dataset.sessid
                         || (window.BX && typeof window.BX.bitrix_sessid === 'function' ? window.BX.bitrix_sessid() : '')
-                        || '');
-                    search.set('signed', node.dataset.signed || '');
-                }
+                        || '',
+                    signed: node?.dataset.signed || ''
+                });
 
                 isLoading.value = true;
 
                 try {
                     const response = await fetch(url, {
                         method: 'POST',
-                        body: search,
+                        body,
                         headers: { 'X-Requested-With': 'XMLHttpRequest' }
                     });
                     const payload = await response.json();

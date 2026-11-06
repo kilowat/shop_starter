@@ -72,14 +72,28 @@
             const id = ++requestId;
             const node = fragment();
 
+            // фильтр и сортировка — в строке запроса, страница и подпись — в теле
+            const page = pageParam();
+            const search = new URLSearchParams(query);
+            const pageNumber = search.get(page);
+
+            search.delete(page);
+
+            const body = {
+                sessid: sessid(),
+                signed: node?.dataset.signed || '',
+                filterSigned: filterSigned(),
+            };
+
+            if (pageNumber) {
+                body[page] = pageNumber;
+            }
+
             isLoading.value = true;
 
             try {
-                const payload = await post(listUrl(), Object.assign({
-                    sessid: sessid(),
-                    signed: node?.dataset.signed || '',
-                    filterSigned: filterSigned(),
-                }, query));
+                const url = listUrl() + (search.toString() ? '?' + search.toString() : '');
+                const payload = await post(url, body);
 
                 if (id !== requestId || payload.status !== 'success') {
                     return;
