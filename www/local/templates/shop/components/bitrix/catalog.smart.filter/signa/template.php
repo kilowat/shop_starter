@@ -13,33 +13,17 @@ if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) {
     die();
 }
 
-// Режим данных для ajax-эндпоинта /api/catalog/filter: из arResult берём
-// только счётчики по значениям и общее число товаров — стейту больше не нужно
-if (($arParams['RETURN_DATA'] ?? 'N') === 'Y') {
-    $counts = [];
-
-    foreach ($arResult['SIGNA_DATA']['ITEMS'] ?? [] as $id => $item) {
-        foreach ($item['VALUES'] ?? [] as $key => $value) {
-            $counts[$id]['VALUES'][$key] = [
-                'CONTROL_NAME' => $value['CONTROL_NAME'] ?? '',
-                'ELEMENT_COUNT' => (int)($value['ELEMENT_COUNT'] ?? 0),
-                'DISABLED' => !empty($value['DISABLED']),
-            ];
-        }
-    }
-
-    echo \Bitrix\Main\Web\Json::encode([
-        'ITEMS' => $counts,
-        'TOTAL' => (int)($arResult['SIGNA_DATA']['TOTAL'] ?? 0),
-    ], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP);
-
-    return;
-}
-
 $signaData = \Bitrix\Main\Web\Json::encode(
     $arResult['SIGNA_DATA'] ?? [],
     JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP
 );
 ?>
 <script>window.__SMART_FILTER__ = <?= $signaData ?>;</script>
-<smart-filter data-counts-url="<?= htmlspecialcharsbx((string)($arParams['COUNTS_URL'] ?? '')) ?>"></smart-filter>
+<?php
+$countsUrl = (string)($arParams['COUNTS_URL'] ?? '/api/catalog/filter');
+$signed = (string)($arParams[\App\Helper\Component\Signer::PARAM] ?? '');
+?>
+<smart-filter
+    data-counts-url="<?= htmlspecialcharsbx($countsUrl) ?>"
+    data-signed="<?= htmlspecialcharsbx($signed) ?>"
+></smart-filter>

@@ -19,6 +19,10 @@ if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) {
 $nav = $arResult['NAV_RESULT'] ?? null;
 $pageParam = 'PAGEN_' . (int)($nav && $nav->NavNum ? $nav->NavNum : 1);
 
+// Куда JS стучится за фрагментом и подпись параметров, с которыми компонент отрисован
+$listUrl = (string)($arParams['LIST_URL'] ?? '/api/catalog/list');
+$signed = (string)($arParams[\App\Helper\Component\Signer::PARAM] ?? '');
+
 
 /**
  * Картинка товара: PREVIEW_PICTURE, при отсутствии — DETAIL_PICTURE.
@@ -117,12 +121,18 @@ $getPrice = static function (array $item): array {
     return ['html' => '', 'from' => false];
 };
 ?>
+<div
+    class="catalog-fragment"
+    data-list-url="<?= htmlspecialcharsbx($listUrl) ?>"
+    data-signed="<?= htmlspecialcharsbx($signed) ?>"
+    data-page-param="<?= $pageParam ?>"
+>
 <?php if (empty($arResult['ITEMS'])): ?>
-    <div class="alert alert-light border mb-0" role="alert" data-page-param="<?= $pageParam ?>">
+    <div class="alert alert-light border mb-0" role="alert">
         По выбранным условиям товары не найдены.
     </div>
 <?php else: ?>
-    <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-3 g-3" data-page-param="<?= $pageParam ?>">
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-3 g-3">
         <?php foreach ($arResult['ITEMS'] as $arItem):
             $itemName = (string)$arItem['NAME'];
             $detailUrl = (string)($arItem['DETAIL_PAGE_URL'] ?? '');
@@ -180,3 +190,4 @@ $getPrice = static function (array $item): array {
         </nav>
     <?php endif; ?>
 <?php endif; ?>
+</div>

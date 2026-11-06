@@ -84,4 +84,17 @@ if (($arParams['SKIP_COUNT'] ?? 'N') !== 'Y') {
         : 0;
 }
 
-$arResult['SIGNA_DATA']['TOTAL'] = (int)($arResult['TOTAL_COUNT'] ?? 0);
+// Счётчики по значениям: { CONTROL_NAME: число товаров } — их отдаём контроллеру
+$counts = [];
+
+foreach ($items as $item) {
+    foreach ($item['VALUES'] ?? [] as $value) {
+        if (!empty($value['CONTROL_NAME'])) {
+            $counts[$value['CONTROL_NAME']] = (int)($value['ELEMENT_COUNT'] ?? 0);
+        }
+    }
+}
+
+$arResult['COUNTS'] = $counts;
+$arResult['TOTAL'] = (int)($arResult['TOTAL_COUNT'] ?? 0);
+$arResult['SIGNA_DATA']['TOTAL'] = $arResult['TOTAL'];

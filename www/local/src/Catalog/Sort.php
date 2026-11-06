@@ -78,6 +78,21 @@ final class Sort
     }
 
     /**
+     * Проставить поля сортировки в параметры компонента.
+     */
+    public static function apply(array $params, ?string $code): array
+    {
+        $sort = self::resolve($code);
+
+        $params['ELEMENT_SORT_FIELD'] = $sort['field'];
+        $params['ELEMENT_SORT_ORDER'] = $sort['order'];
+        $params['ELEMENT_SORT_FIELD2'] = $sort['field2'];
+        $params['ELEMENT_SORT_ORDER2'] = $sort['order2'];
+
+        return $params;
+    }
+
+    /**
      * Список сортировок для интерфейса.
      *
      * @return array<int, array{code: string, name: string}>

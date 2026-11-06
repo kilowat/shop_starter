@@ -19,6 +19,6 @@ return static function (RoutingConfigurator $routes): void {
 
     $routes->get('/api/auth/login', [AuthController::class, 'login']);
 
-    $routes->get('/api/catalog/filter', [CatalogController::class, 'filter']);
-    $routes->get('/api/catalog/list', [CatalogController::class, 'list']);
+    $routes->post('/api/catalog/filter', [CatalogController::class, 'filter']);
+    $routes->post('/api/catalog/list', [CatalogController::class, 'list']);
 };

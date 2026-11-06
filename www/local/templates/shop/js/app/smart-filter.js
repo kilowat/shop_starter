@@ -170,13 +170,13 @@
 
         // ----------------------------------------------------------- счётчики
         /** Применить данные из arResult: счётчики по значениям и общее число товаров. */
-        const applyFilterData = (filter) => {
-            if (!filter) {
+        const applyFilterData = (result) => {
+            if (!result) {
                 return;
             }
 
-            counts.value = buildCounts(filter.ITEMS);
-            total.value = Number(filter.TOTAL || 0);
+            counts.value = result.COUNTS || {};
+            total.value = Number(result.TOTAL || 0);
         };
 
         function buildCounts(sourceItems) {
@@ -212,15 +212,25 @@
                     }
                 });
 
-                const query = search.toString();
                 const node = document.querySelector('smart-filter');
-                const url = (node?.dataset.countsUrl || '/api/catalog/filter') + (query ? '?' + query : '');
+                const url = node?.dataset.countsUrl || '/api/catalog/filter';
                 const id = ++countsRequest;
+
+                if (node) {
+                    const wrapper = document.querySelector('[data-catalog-list]');
+
+                    search.set('sessid', wrapper?.dataset.sessid
+                        || (window.BX && typeof window.BX.bitrix_sessid === 'function' ? window.BX.bitrix_sessid() : '')
+                        || '');
+                    search.set('signed', node.dataset.signed || '');
+                }
 
                 isLoading.value = true;
 
                 try {
                     const response = await fetch(url, {
+                        method: 'POST',
+                        body: search,
                         headers: { 'X-Requested-With': 'XMLHttpRequest' }
                     });
                     const payload = await response.json();
@@ -229,7 +239,7 @@
                         return;
                     }
 
-                    applyFilterData(payload.data.filter);
+                    applyFilterData(payload.data.result);
                 } catch (error) {
                     console.warn('[smart-filter] не удалось получить счётчики:', error);
                 } finally {

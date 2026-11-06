@@ -2,119 +2,124 @@
 
 namespace Controllers;
 
-use App\Catalog\Params;
-use App\Catalog\Renderer;
 use App\Catalog\Sort;
+use App\Helper\Component\AjaxController;
+use App\Catalog\Components;
 use Bitrix\Main\Engine\ActionFilter\Authentication;
-use Bitrix\Main\Engine\ActionFilter\Csrf;
-use Bitrix\Main\Engine\Controller;
+use Bitrix\Main\Engine\Response\AjaxJson;
 use Bitrix\Main\Loader;
 
 /**
- * Ajax-эндпоинты каталога.
+ * Ajax-эндпоинты каталога (POST).
  *
- * GET /api/catalog/filter — живые счётчики фильтра (JSON, без разметки).
- * GET /api/catalog/list   — HTML списка товаров с пагинацией + мета.
- *
- * Оба работают без шапки/подвала: поднимается только пролог Битрикса,
- * компоненты включаются вручную через App\Catalog\Renderer.
+ * Список: POST /api/catalog/list   — html грида с пагинацией.
+ * Фильтр: POST /api/catalog/filter — счётчики по значениям и общее число товаров.
  */
-final class CatalogController extends Controller
+final class CatalogController extends AjaxController
 {
     /**
-     * Каталог доступен и неавторизованным (счётчики и список — публичные данные).
+     * Каталог доступен всем: снимаем проверку авторизации, CSRF остаётся.
      */
     public function configureActions(): array
     {
         return [
-            'list' => ['-prefilters' => [Authentication::class, Csrf::class]],
-            'filter' => ['-prefilters' => [Authentication::class, Csrf::class]],
+            'list' => ['-prefilters' => [Authentication::class]],
+            'filter' => ['-prefilters' => [Authentication::class]],
         ];
     }
 
     /**
-     * Список товаров: html + мета (страница, всего страниц, найдено).
+     * Фрагмент списка.
      */
-    public function listAction(): array
+    public function listAction(): AjaxJson
     {
-        $this->includeModules();
+        $section = $this->signedParams(Components::LIST);
 
-        $request = $this->getRequest();
-        $sortCode = Sort::resolve((string)$request->getQuery('sort'))['code'];
+        if ($section === null) {
+            return $this->signatureError();
+        }
 
-        // Тихо прогоняем фильтр: он заполняет $GLOBALS['arrFilter'] для списка
-        $this->prepareFilter();
+        $this->renderFilter(); // список читает $GLOBALS['arrFilter'], его заполняет фильтр
 
-        $html = Renderer::component(
-            'bitrix:catalog.section',
-            'shop_bootstrap',
-            Params::section($sortCode, $this->basePage($request))
-        );
+        $params = Sort::apply($section['params'], (string)$this->getRequest()->getPost('sort'));
+        $params['CURRENT_BASE_PAGE'] = $this->basePage($params);
+        $section['params'] = $params;
 
-        return [
-            'html' => $html,
-        ];
+        return $this->html(Components::LIST, $section);
     }
 
     /**
-     * Данные фильтра для <smart-filter>: счётчики по значениям и общее число товаров.
-     * Их собирает result_modifier шаблона в $arResult, шаблон отдаёт как JSON.
+     * Счётчики фильтра.
      */
-    public function filterAction(): array
+    public function filterAction(): AjaxJson
     {
-        $this->includeModules();
+        $filter = $this->signedParams(Components::FILTER);
 
-        $json = Renderer::component(
-            'bitrix:catalog.smart.filter',
-            'signa',
-            Params::filter() + ['RETURN_DATA' => 'Y']
-        );
+        if ($filter === null) {
+            return $this->signatureError();
+        }
 
-        return [
-            'filter' => json_decode($json, true) ?: ['ITEMS' => [], 'TOTAL' => 0],
-        ];
+        return $this->result(Components::FILTER, $filter, ['COUNTS', 'TOTAL']);
     }
 
-    private function includeModules(): void
+    protected function prepare(): void
     {
         Loader::includeModule('iblock');
         Loader::includeModule('catalog');
 
-        // Композитный кеш (StaticArea) кешировал бы готовый HTML компонента
-        // и отдавал бы его без выполнения шаблона — вместе с метой это не работает
+        // фильтр читает значения из $_GET — показываем ему параметры из POST
+        $this->exposeFilterParams();
+
+        // готовый HTML компонента не должен кешироваться вместе с шаблоном
         if (class_exists(\Bitrix\Main\Composite\Engine::class)) {
             \Bitrix\Main\Composite\Engine::setUseHTMLCache(false);
         }
     }
 
     /**
-     * Включить смарт-фильтр без вывода: нужен ради $GLOBALS['arrFilter']
-     * и данных SIGNA_DATA (их складывает result_modifier шаблона).
+     * Фильтр нужен списку ради $GLOBALS['arrFilter'] — рендерим его молча.
      */
-    /**
-     * Адрес настоящей страницы каталога с текущими фильтром и сортировкой —
-     * чтобы ссылки пагинации вели на неё, а не на api-эндпоинт.
-     */
-    private function basePage(\Bitrix\Main\HttpRequest $request): string
+    private function renderFilter(): void
     {
-        $params = [];
+        $filter = $this->signedParams(Components::FILTER, 'filterSigned');
 
-        foreach ($request->getQueryList()->toArray() as $key => $value) {
+        if ($filter === null) {
+            return;
+        }
+
+        $this->renderOnly(Components::FILTER, $filter);
+    }
+
+
+    /**
+     * Смарт-фильтр берёт значения из $_GET (если в запросе есть set_filter),
+     * поэтому параметры фильтра из POST показываем ему в $_GET.
+     */
+    private function exposeFilterParams(): void
+    {
+        foreach ($this->getRequest()->getPostList()->toArray() as $key => $value) {
+            if ($key === 'set_filter' || $key === 'del_filter' || str_starts_with($key, 'arrFilter')) {
+                $_GET[$key] = $value;
+            }
+        }
+    }
+
+    /**
+     * Адрес настоящей страницы с текущими фильтром и сортировкой (без PAGEN_1).
+     */
+    private function basePage(array $params): string
+    {
+        $path = (string)(parse_url((string)($params['CURRENT_BASE_PAGE'] ?? '/'), PHP_URL_PATH) ?: '/');
+        $query = [];
+
+        foreach ($this->getRequest()->getPostList()->toArray() as $key => $value) {
             if ($key === 'sort' || $key === 'set_filter' || str_starts_with($key, 'arrFilter')) {
-                $params[$key] = $value;
+                $query[$key] = $value;
             }
         }
 
-        $query = http_build_query($params);
+        $search = http_build_query($query);
 
-        return Params::LIST_PAGE_URL . ($query !== '' ? '?' . $query : '');
+        return $path . ($search !== '' ? '?' . $search : '');
     }
-
-    private function prepareFilter(): void
-    {
-        // Список ждёт от фильтра только $GLOBALS['arrFilter'] — общий подсчёт не нужен
-        Renderer::component('bitrix:catalog.smart.filter', 'signa', Params::filter() + ['SKIP_COUNT' => 'Y']);
-    }
-
-
 }

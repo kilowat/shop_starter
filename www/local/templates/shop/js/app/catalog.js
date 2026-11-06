@@ -15,6 +15,7 @@
     }
 
     const LIST = '[data-catalog-list]';
+    const FRAGMENT = `${LIST} [data-signed]`;
 
     /** Имя параметра постраничной навигации — из разметки компонента списка. */
     const pageParam = () => document.querySelector(`${LIST} [data-page-param]`)?.dataset.pageParam || 'PAGEN_1';
@@ -23,6 +24,37 @@
     const isCatalogParam = (key) => (
         key === pageParam() || key === 'sort' || key === 'set_filter' || key.startsWith('arrFilter')
     );
+
+    /** Корень фрагмента: в нём url эндпоинта, подпись параметров и sessid. */
+    const fragment = () => document.querySelector(FRAGMENT);
+
+    /** CSRF-токен: с обёртки страницы (её не кешируют компоненты), запасной путь — ядро. */
+    const sessid = () => (
+        document.querySelector(LIST)?.dataset.sessid
+        || (window.BX && typeof window.BX.bitrix_sessid === 'function' ? window.BX.bitrix_sessid() : '')
+        || ''
+    );
+    const listUrl = () => fragment()?.dataset.listUrl || '/api/catalog/list';
+    const filterSigned = () => document.querySelector('smart-filter')?.dataset.signed || '';
+
+    /** POST-запрос к эндпоинту каталога. */
+    const post = async (url, data) => {
+        const body = new URLSearchParams();
+
+        Object.entries(data).forEach(([key, value]) => {
+            if (value !== undefined && value !== null && value !== '') {
+                body.set(key, value);
+            }
+        });
+
+        const response = await fetch(url, {
+            method: 'POST',
+            body,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        });
+
+        return response.json();
+    };
 
     signa.state('catalogState', ({ signal, computed, effect }) => {
         const listNode = () => document.querySelector(LIST);
@@ -38,13 +70,16 @@
 
         const load = async (query, key) => {
             const id = ++requestId;
-            const search = new URLSearchParams(query).toString();
-            const url = (listNode()?.dataset.listUrl || '/api/catalog/list') + (search ? '?' + search : '');
+            const node = fragment();
 
             isLoading.value = true;
 
             try {
-                const payload = await (await fetch(url)).json();
+                const payload = await post(listUrl(), Object.assign({
+                    sessid: sessid(),
+                    signed: node?.dataset.signed || '',
+                    filterSigned: filterSigned(),
+                }, query));
 
                 if (id !== requestId || payload.status !== 'success') {
                     return;
