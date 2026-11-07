@@ -59,28 +59,73 @@ $arResult['SIGNA_DATA'] = [
     'HIDDEN' => $decode($arResult['HIDDEN'] ?? []),
 ];
 
+/**
+ * Считает товары по фильтру так же, как это делает bitrix:catalog.section:
+ * условия по торговым предложениям (OFFERS) и каталожные поля (цены, наличие)
+ * уходят в SubQuery по SKU.
+ *
+ * Если отдать OFFERS прямо в CIBlockElement::GetList, он молча проигнорирует
+ * это условие: счётчик покажет больше товаров, чем список реально выведет.
+ */
+$countElements = static function (array $filter, int $iblockId): int {
+    $filter = array_merge([
+        'IBLOCK_ID' => $iblockId,
+        'ACTIVE' => 'Y',
+        'ACTIVE_DATE' => 'Y',
+        'CHECK_PERMISSIONS' => 'N',
+        'INCLUDE_SUBSECTIONS' => 'Y',
+    ], $filter);
+
+    if (!\Bitrix\Main\Loader::includeModule('catalog')) {
+        return (int)\CIBlockElement::GetList([], $filter, [], false);
+    }
+
+    $filter = \CProductQueryBuilder::convertOldFilter($filter);
+
+    $catalogFilter = [];
+
+    foreach ($filter as $key => $value) {
+        if (\CProductQueryBuilder::isCatalogFilterField($key)) {
+            $catalogFilter[$key] = $value;
+            unset($filter[$key]);
+        }
+    }
+
+    $offers = is_array($filter['OFFERS'] ?? null) ? $filter['OFFERS'] : [];
+    unset($filter['OFFERS']);
+
+    $sku = \CCatalogSKU::GetInfoByProductIBlock($iblockId);
+
+    if (empty($sku)) {
+        return (int)\CIBlockElement::GetList([], array_merge($filter, $catalogFilter), [], false);
+    }
+
+    $subFilter = array_merge($offers, $catalogFilter, [
+        'IBLOCK_ID' => $sku['IBLOCK_ID'],
+        'ACTIVE' => 'Y',
+        'ACTIVE_DATE' => 'Y',
+    ]);
+
+    $subQuery = \CIBlockElement::SubQuery('PROPERTY_' . $sku['SKU_PROPERTY_ID'], $subFilter);
+
+    if ($offers) {
+        $filter['=ID'] = $subQuery;
+    } elseif ($catalogFilter) {
+        // цена/наличие: подходит и сам товар, и его предложение
+        $filter[] = ['LOGIC' => 'OR', [$catalogFilter], '=ID' => $subQuery];
+    }
+
+    // Пустой GROUP BY переключает GetList в режим COUNT(DISTINCT BE.ID)
+    return (int)\CIBlockElement::GetList([], $filter, [], false);
+};
+
 // Общее число товаров по собранному фильтру ($GLOBALS[FILTER_NAME] уже заполнен компонентом).
 // Считаем, только когда число реально нужно: списку оно не требуется
 if (($arParams['SKIP_COUNT'] ?? 'N') !== 'Y') {
     $filter = $GLOBALS[$arResult['FILTER_NAME'] ?? ''] ?? [];
 
-    if (is_array($filter)) {
-        $filter = array_merge([
-            'IBLOCK_ID' => (int)$arParams['IBLOCK_ID'],
-            'ACTIVE' => 'Y',
-            'ACTIVE_DATE' => 'Y',
-            'CHECK_PERMISSIONS' => 'N',
-            'INCLUDE_SUBSECTIONS' => 'Y',
-        ], $filter);
-
-        if (\Bitrix\Main\Loader::includeModule('catalog')) {
-            $filter = \CProductQueryBuilder::convertOldFilter($filter);
-        }
-    }
-
-    // Пустой GROUP BY переключает GetList в режим COUNT(DISTINCT BE.ID)
     $arResult['TOTAL_COUNT'] = is_array($filter)
-        ? (int)\CIBlockElement::GetList([], $filter, [], false)
+        ? $countElements($filter, (int)$arParams['IBLOCK_ID'])
         : 0;
 }
 

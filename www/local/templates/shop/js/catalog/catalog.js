@@ -20,9 +20,21 @@
     const PAGE_PARAM = 'PAGEN_1';
     const pageParam = () => PAGE_PARAM;
 
+    /**
+     * Имя параметра сортировки: его задаёт shop:catalog.sort
+     * (параметр SORT_PARAM_NAME). Без компонента сортировки — 'sort'.
+     */
+    const sortParam = () => {
+        try {
+            return signa.state('SortState').value?.param || 'sort';
+        } catch (error) {
+            return 'sort';
+        }
+    };
+
     // из каких параметров URL состоит «применённое» состояние каталога
     const isCatalogParam = (key) => (
-        key === pageParam() || key === 'sort' || key === 'set_filter' || key.startsWith('arrFilter')
+        key === pageParam() || key === sortParam() || key === 'set_filter' || key.startsWith('arrFilter')
     );
 
     /** CSRF-токен из header.php. */
