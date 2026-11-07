@@ -69,7 +69,7 @@
                 const url = window.location.pathname + (search.toString() ? '?' + search.toString() : '');
                 const payload = await post(url, {
                     sessid: sessid(),
-                    catalog_action: 'list',
+                    ajax_action: 'list',
                 });
 
                 if (id !== requestId || payload.status !== 'success') {

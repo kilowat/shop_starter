@@ -2,7 +2,7 @@
 /**
  * Универсальный AJAX-обработчик.
  *
- * Создаётся в _ajax.php страницы: (new CatalogAjax([...]))->handle().
+ * Создаётся в index.php страницы: (new CatalogAjax([...]))->handle().
  */
 
 namespace App\Helper;
@@ -20,12 +20,13 @@ final class CatalogAjax
     public const RESPONSE_HTML = 'html';
     public const RESPONSE_RESULT = 'result';
 
+    private const ACTION_FIELD = 'ajax_action';
+
     /**
      * @param array<string, CatalogAjaxAction> $actions
      */
     public function __construct(
         private readonly array $actions,
-        private readonly string $actionField = 'ajax_action',
         private readonly string $sessidField = 'sessid',
         private readonly string $method = 'POST',
     ) {
@@ -114,12 +115,7 @@ final class CatalogAjax
 
     private function actionName(): string
     {
-        $field = trim($this->actionField);
-        if ($field === '') {
-            $field = 'action';
-        }
-
-        $value = $_POST[$field] ?? '';
+        $value = $_POST[self::ACTION_FIELD] ?? '';
 
         return is_string($value) ? $value : '';
     }

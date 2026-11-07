@@ -219,7 +219,7 @@
                 // фильтр читает значения из query, action и sessid — в теле
                 const body = new URLSearchParams({
                     sessid: window.__BITRIX_SESSID__ || '',
-                    catalog_action: 'filter'
+                    ajax_action: 'filter'
                 });
 
                 isLoading.value = true;
