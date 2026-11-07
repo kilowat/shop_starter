@@ -36,3 +36,5 @@ $catalogFilterResult = $APPLICATION->IncludeComponent(
     ['HIDE_ICONS' => $hideIcons ?? 'N'],
     $returnResult ?? false
 );
+
+return $catalogFilterResult;

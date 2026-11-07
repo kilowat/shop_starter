@@ -18,6 +18,7 @@ addAssetCss([
 
 <head>
     <?php $APPLICATION->ShowHead(); ?>
+    <script>window.__BITRIX_SESSID__ = '<?= htmlspecialcharsbx(bitrix_sessid()) ?>';</script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?php $APPLICATION->ShowTitle(); ?></title>

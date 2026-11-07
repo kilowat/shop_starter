@@ -16,16 +16,17 @@
 
     const LIST = '#catalog-list';
 
-    /** Имя параметра постраничной навигации. */
-    const pageParam = () => window.__CATALOG_PAGE_PARAM__ || 'PAGEN_1';
+    /** Имя параметра постраничной навигации каталога. */
+    const PAGE_PARAM = 'PAGEN_1';
+    const pageParam = () => PAGE_PARAM;
 
     // из каких параметров URL состоит «применённое» состояние каталога
     const isCatalogParam = (key) => (
         key === pageParam() || key === 'sort' || key === 'set_filter' || key.startsWith('arrFilter')
     );
 
-    /** CSRF-токен из разметки страницы. */
-    const sessid = () => document.getElementById('catalog-sessid')?.value || '';
+    /** CSRF-токен из header.php. */
+    const sessid = () => window.__BITRIX_SESSID__ || '';
 
     /** POST-запрос на текущую страницу каталога. */
     const post = async (url, data) => {

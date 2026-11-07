@@ -76,3 +76,5 @@ $catalogSort = $APPLICATION->IncludeComponent(
     ['HIDE_ICONS' => $hideIcons ?? 'N'],
     true
 );
+
+return $catalogSort;

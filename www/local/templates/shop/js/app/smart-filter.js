@@ -218,7 +218,7 @@
 
                 // фильтр читает значения из query, action и sessid — в теле
                 const body = new URLSearchParams({
-                    sessid: document.getElementById('catalog-sessid')?.value || '',
+                    sessid: window.__BITRIX_SESSID__ || '',
                     catalog_action: 'filter'
                 });
 

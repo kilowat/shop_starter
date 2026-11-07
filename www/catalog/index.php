@@ -46,9 +46,6 @@ global $arrFilter;
 $arrFilter = [];
 ?>
 <div class="container">
-    <input type="hidden" id="catalog-sessid" name="sessid" value="<?= htmlspecialcharsbx(bitrix_sessid()) ?>">
-    <script>window.__CATALOG_PAGE_PARAM__ = 'PAGEN_1';</script>
-
     <div class="row g-4">
 
         <aside class="col-12 col-lg-3">
