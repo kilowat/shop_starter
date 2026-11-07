@@ -2,15 +2,23 @@
 /**
  * Каталог: фильтр в сайдбаре, сортировка и список товаров.
  *
- * Список с пагинацией подгружается через GET /api/catalog/list (catalog.js),
- * живые счётчики фильтра — через GET /api/catalog/filter (smart-filter.js).
+ * AJAX идёт на этот же URL (POST + catalog_action) и обрабатывается
+ * в catalog/_ajax.php до подключения шаблона сайта.
  */
 
-use App\Catalog\Params;
-use App\Catalog\Sort;
-use Bitrix\Main\Context;
 use Bitrix\Main\Loader;
-use Bitrix\Main\Web\Json;
+
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['catalog_action'])) {
+    define('NO_KEEP_STATISTIC', true);
+    define('STOP_STATISTICS', true);
+    define('NO_AGENT_STATISTIC', true);
+    define('NO_AGENT_CHECK', true);
+
+    require $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_before.php';
+    require __DIR__ . '/_ajax.php';
+
+    exit;
+}
 
 require($_SERVER['DOCUMENT_ROOT'] . '/bitrix/header.php');
 
@@ -21,12 +29,6 @@ Loader::includeModule('catalog');
 
 $APPLICATION->SetTitle('Каталог');
 
-$request = Context::getCurrent()->getRequest();
-$sortCode = Sort::resolve($request->getQuery('sort'))['code'];
-$sectionParams = Params::section($sortCode, $request->getRequestUri());
-
-// Ассеты подключаем на странице: шаблоны фильтра и списка используются
-// ещё и в ajax-эндпоинтах, где подключать CSS/JS не нужно
 addAssetCss([
     'js/libs/nouislider/nouislider.min.css',
 ]);
@@ -44,31 +46,22 @@ global $arrFilter;
 $arrFilter = [];
 ?>
 <div class="container">
+    <input type="hidden" id="catalog-sessid" name="sessid" value="<?= htmlspecialcharsbx(bitrix_sessid()) ?>">
+    <script>window.__CATALOG_PAGE_PARAM__ = 'PAGEN_1';</script>
+
     <div class="row g-4">
 
         <aside class="col-12 col-lg-3">
             <div class="catalog-sidebar">
-                <?php $APPLICATION->IncludeComponent(
-                    'bitrix:catalog.smart.filter',
-                    'signa',
-                    Params::filter(),
-                    false,
-                    ['HIDE_ICONS' => 'Y']
-                ); ?>
+                <?php require $_SERVER['DOCUMENT_ROOT'] . '/local/include/components/smart_filter.php'; ?>
             </div>
         </aside>
 
         <div class="col-12 col-lg-9">
-            <catalog-sort data-sorts="<?= htmlspecialcharsbx(Json::encode(Sort::options(), JSON_UNESCAPED_UNICODE)) ?>"></catalog-sort>
+            <?php require $_SERVER['DOCUMENT_ROOT'] . '/local/include/components/catalog_sort.php'; ?>
 
-            <div data-catalog-list data-list-url="<?= htmlspecialcharsbx($sectionParams['LIST_URL']) ?>">
-                <?php $APPLICATION->IncludeComponent(
-                    'bitrix:catalog.section',
-                    'shop_bootstrap',
-                    $sectionParams,
-                    false,
-                    ['HIDE_ICONS' => 'Y']
-                ); ?>
+            <div id="catalog-list">
+                <?php require $_SERVER['DOCUMENT_ROOT'] . '/local/include/components/catalog_list.php'; ?>
             </div>
         </div>
 

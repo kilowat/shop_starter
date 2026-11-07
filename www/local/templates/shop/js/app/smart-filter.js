@@ -212,18 +212,14 @@
                     }
                 });
 
-                const node = document.querySelector('smart-filter');
                 const query = search.toString();
-                const url = (node?.dataset.countsUrl || '/api/catalog/filter') + (query ? '?' + query : '');
-                const wrapper = document.querySelector('[data-catalog-list]');
+                const url = window.location.pathname + (query ? '?' + query : '');
                 const id = ++countsRequest;
 
-                // фильтр читает значения из query, подпись и sessid — в теле
+                // фильтр читает значения из query, action и sessid — в теле
                 const body = new URLSearchParams({
-                    sessid: wrapper?.dataset.sessid
-                        || (window.BX && typeof window.BX.bitrix_sessid === 'function' ? window.BX.bitrix_sessid() : '')
-                        || '',
-                    signed: node?.dataset.signed || ''
+                    sessid: document.getElementById('catalog-sessid')?.value || '',
+                    catalog_action: 'filter'
                 });
 
                 isLoading.value = true;

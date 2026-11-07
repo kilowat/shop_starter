@@ -14,16 +14,6 @@ if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) {
     die();
 }
 
-// Имя параметра постраничной навигации (PAGEN_1) — из объекта пагинации,
-// чтобы JS не хардкодил его у себя
-$nav = $arResult['NAV_RESULT'] ?? null;
-$pageParam = 'PAGEN_' . (int)($nav && $nav->NavNum ? $nav->NavNum : 1);
-
-// Куда JS стучится за фрагментом и подпись параметров, с которыми компонент отрисован
-$listUrl = (string)($arParams['LIST_URL'] ?? '/api/catalog/list');
-$signed = (string)($arParams[\App\Helper\Component\Signer::PARAM] ?? '');
-
-
 /**
  * Картинка товара: PREVIEW_PICTURE, при отсутствии — DETAIL_PICTURE.
  */
@@ -121,12 +111,7 @@ $getPrice = static function (array $item): array {
     return ['html' => '', 'from' => false];
 };
 ?>
-<div
-    class="catalog-fragment"
-    data-list-url="<?= htmlspecialcharsbx($listUrl) ?>"
-    data-signed="<?= htmlspecialcharsbx($signed) ?>"
-    data-page-param="<?= $pageParam ?>"
->
+<div class="catalog-fragment">
 <?php if (empty($arResult['ITEMS'])): ?>
     <div class="alert alert-light border mb-0" role="alert">
         По выбранным условиям товары не найдены.

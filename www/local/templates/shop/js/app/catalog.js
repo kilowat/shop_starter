@@ -14,30 +14,20 @@
         return;
     }
 
-    const LIST = '[data-catalog-list]';
-    const FRAGMENT = `${LIST} [data-signed]`;
+    const LIST = '#catalog-list';
 
-    /** Имя параметра постраничной навигации — из разметки компонента списка. */
-    const pageParam = () => document.querySelector(`${LIST} [data-page-param]`)?.dataset.pageParam || 'PAGEN_1';
+    /** Имя параметра постраничной навигации. */
+    const pageParam = () => window.__CATALOG_PAGE_PARAM__ || 'PAGEN_1';
 
     // из каких параметров URL состоит «применённое» состояние каталога
     const isCatalogParam = (key) => (
         key === pageParam() || key === 'sort' || key === 'set_filter' || key.startsWith('arrFilter')
     );
 
-    /** Корень фрагмента: в нём url эндпоинта, подпись параметров и sessid. */
-    const fragment = () => document.querySelector(FRAGMENT);
+    /** CSRF-токен из разметки страницы. */
+    const sessid = () => document.getElementById('catalog-sessid')?.value || '';
 
-    /** CSRF-токен: с обёртки страницы (её не кешируют компоненты), запасной путь — ядро. */
-    const sessid = () => (
-        document.querySelector(LIST)?.dataset.sessid
-        || (window.BX && typeof window.BX.bitrix_sessid === 'function' ? window.BX.bitrix_sessid() : '')
-        || ''
-    );
-    const listUrl = () => fragment()?.dataset.listUrl || '/api/catalog/list';
-    const filterSigned = () => document.querySelector('smart-filter')?.dataset.signed || '';
-
-    /** POST-запрос к эндпоинту каталога. */
+    /** POST-запрос на текущую страницу каталога. */
     const post = async (url, data) => {
         const body = new URLSearchParams();
 
@@ -70,30 +60,16 @@
 
         const load = async (query, key) => {
             const id = ++requestId;
-            const node = fragment();
-
-            // фильтр и сортировка — в строке запроса, страница и подпись — в теле
-            const page = pageParam();
             const search = new URLSearchParams(query);
-            const pageNumber = search.get(page);
-
-            search.delete(page);
-
-            const body = {
-                sessid: sessid(),
-                signed: node?.dataset.signed || '',
-                filterSigned: filterSigned(),
-            };
-
-            if (pageNumber) {
-                body[page] = pageNumber;
-            }
 
             isLoading.value = true;
 
             try {
-                const url = listUrl() + (search.toString() ? '?' + search.toString() : '');
-                const payload = await post(url, body);
+                const url = window.location.pathname + (search.toString() ? '?' + search.toString() : '');
+                const payload = await post(url, {
+                    sessid: sessid(),
+                    catalog_action: 'list',
+                });
 
                 if (id !== requestId || payload.status !== 'success') {
                     return;
