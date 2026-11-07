@@ -255,6 +255,7 @@ function sendAjaxResponse(string $viewPath, array $viewParams = [], array $addit
 {
     AjaxHtmlResponse::sendResponse($viewPath, $viewParams, $additionalParams, $withSiteTemplate);
 }
+
 /**
  * Дампим переменную
  * Чтобы включить в браузере ?debug_on=y / ?debug_off=y

@@ -2,9 +2,12 @@
 /**
  * AJAX каталога.
  *
- * Здесь только конфигурация: какие include-файлы выполнить и что вернуть.
- * Универсальная обработка запроса — в local/include/ajax.php.
+ * Здесь только конфигурация действий: какие include-файлы выполнить
+ * и что вернуть. Обработка — в App\Helper\CatalogAjax.
  */
+
+use App\Helper\CatalogAjax;
+use App\Helper\CatalogAjaxAction;
 
 if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) {
     die();
@@ -14,29 +17,24 @@ $resetFilter = static function (): void {
     $GLOBALS['arrFilter'] = [];
 };
 
-$ajaxConfig = [
-    'method' => 'POST',
-    'actionField' => 'catalog_action',
-    'sessidField' => 'sessid',
-    'actions' => [
-        'list' => [
-            'init' => $resetFilter,
-            'prepare' => [
+(new CatalogAjax(
+    [
+        'list' => new CatalogAjaxAction(
+            render: '/local/include/components/catalog_list.php',
+            prepare: [
                 '/local/include/components/catalog_sort.php',
                 '/local/include/components/smart_filter.php',
             ],
-            'render' => '/local/include/components/catalog_list.php',
-            'response' => 'html',
-        ],
-        'filter' => [
-            'init' => $resetFilter,
-            'prepare' => [],
-            'render' => '/local/include/components/smart_filter.php',
-            'returnResult' => true,
-            'response' => 'result',
-            'resultKeys' => ['COUNTS', 'TOTAL'],
-        ],
+            init: $resetFilter,
+            response: CatalogAjax::RESPONSE_HTML,
+        ),
+        'filter' => new CatalogAjaxAction(
+            render: '/local/include/components/smart_filter.php',
+            init: $resetFilter,
+            returnResult: true,
+            response: CatalogAjax::RESPONSE_RESULT,
+            resultKeys: ['COUNTS', 'TOTAL'],
+        ),
     ],
-];
-
-require $_SERVER['DOCUMENT_ROOT'] . '/local/include/ajax.php';
+    actionField: 'catalog_action'
+))->handle();

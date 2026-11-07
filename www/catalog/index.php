@@ -2,23 +2,15 @@
 /**
  * Каталог: фильтр в сайдбаре, сортировка и список товаров.
  *
- * AJAX идёт на этот же URL (POST + catalog_action) и обрабатывается
- * в catalog/_ajax.php до подключения шаблона сайта.
+ * AJAX идёт на этот же URL (POST + catalog_action). Bootstrap — в
+ * local/include/ajax_bootstrap.php, конфигурация действий — в catalog/_ajax.php.
  */
 
 use Bitrix\Main\Loader;
 
-if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['catalog_action'])) {
-    define('NO_KEEP_STATISTIC', true);
-    define('STOP_STATISTICS', true);
-    define('NO_AGENT_STATISTIC', true);
-    define('NO_AGENT_CHECK', true);
+$ajaxActionField = 'catalog_action';
 
-    require $_SERVER['DOCUMENT_ROOT'] . '/bitrix/modules/main/include/prolog_before.php';
-    require __DIR__ . '/_ajax.php';
-
-    exit;
-}
+require $_SERVER['DOCUMENT_ROOT'] . '/local/include/ajax_bootstrap.php';
 
 require($_SERVER['DOCUMENT_ROOT'] . '/bitrix/header.php');
 
