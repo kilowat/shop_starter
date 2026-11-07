@@ -16,17 +16,21 @@
         const filter = states.smartFilter;
 
         return () => html`
-            <div class="catalog-selected d-flex flex-wrap gap-2">
+            <div class="catalog-selected row g-2">
                 ${filter.selected.value.map((chip) => html`
-                    <button
-                        type="button"
-                        class="btn btn-sm btn-light border d-inline-flex align-items-center gap-1"
-                        onclick=${() => filter.removeChip(chip)}
-                    >
-                        <span class="text-muted small">${chip.groupName}:</span>
-                        <span>${chip.text}</span>
-                        <span aria-hidden="true">✕</span>
-                    </button>
+                    <div class="col-6 col-sm-auto">
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-light border d-inline-flex align-items-center justify-content-between gap-1 text-nowrap w-100"
+                            onclick=${() => filter.removeChip(chip)}
+                        >
+                            <span class="text-truncate me-1">
+                                <span class="text-muted small">${chip.groupName}:</span>
+                                <span>${chip.text}</span>
+                            </span>
+                            <span aria-hidden="true">✕</span>
+                        </button>
+                    </div>
                 `)}
             </div>
         `;

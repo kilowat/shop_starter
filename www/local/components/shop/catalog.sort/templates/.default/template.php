@@ -2,6 +2,9 @@
 /**
  * Шаблон компонента сортировки.
  *
+ * Верстку рисует signa-компонент <catalog-sort> (js/catalog/catalog-sort.js).
+ * Начальные данные кладём в signa-state SortState.
+ *
  * @var array $arResult
  */
 
@@ -10,12 +13,11 @@ if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) {
 }
 
 $config = [
-    'options' => $arResult['OPTIONS'],
-    'current' => $arResult['CURRENT'],
-    'param' => $arResult['PARAM_NAME'],
-    'title' => $arResult['TITLE'],
-    'showTitle' => (bool)$arResult['SHOW_TITLE'],
-    'default' => $arResult['DEFAULT'],
+    'options' => is_array($arResult['OPTIONS'] ?? null) ? $arResult['OPTIONS'] : [],
+    'param' => (string) $arResult['PARAM_NAME'],
+    'default' => (string) $arResult['DEFAULT'],
+    'title' => (string) $arResult['TITLE'],
+    'showTitle' => (bool) $arResult['SHOW_TITLE'],
 ];
 
 $json = \Bitrix\Main\Web\Json::encode(
@@ -23,7 +25,7 @@ $json = \Bitrix\Main\Web\Json::encode(
     JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP
 );
 ?>
-<div class="catalog-sort">
-    <script type="application/json" class="catalog-sort__config"><?= $json ?></script>
-    <catalog-sort></catalog-sort>
-</div>
+<script>
+    window.signa.state('SortState').value = <?= $json ?>;
+</script>
+<catalog-sort class="catalog-sort"></catalog-sort>

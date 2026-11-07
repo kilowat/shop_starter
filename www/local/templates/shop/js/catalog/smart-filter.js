@@ -14,6 +14,14 @@
         return;
     }
 
+    /**
+     * Обновлять список товаров сразу при изменении фильтра.
+     * Счётчики обновляются всегда.
+     * true  — товары перезагружаются сразу;
+     * false — товары только по кнопке «Показать».
+     */
+    const APPLY_PRODUCTS_ON_CHANGE = false;
+
     const DISPLAY_TYPES = {
         NUMBERS_WITH_SLIDER: 'A',
         NUMBERS: 'B',
@@ -50,6 +58,7 @@
     };
 
     const isRangeItem = (item) => Boolean(item && item.VALUES && item.VALUES.MIN && item.VALUES.MAX);
+    const isPriceItem = (item) => Boolean(item && (item.PRICE === true || item.PRICE === 'Y'));
 
     /**
      * При применении фильтра каталог всегда открывается с первой страницы,
@@ -68,9 +77,9 @@
     signa.state('smartFilter', ({ signal, computed, effect }) => {
         const source = window.__SMART_FILTER__ || {};
 
-        const items = Object.values(source.ITEMS || {}).filter(
-            (item) => !isRangeItem(item) && Object.keys(item.VALUES || {}).length > 0
-        );
+        const items = Object.values(source.ITEMS || {})
+            .filter((item) => !isRangeItem(item) && Object.keys(item.VALUES || {}).length > 0)
+            .sort((a, b) => Number(isPriceItem(b)) - Number(isPriceItem(a)));
 
         const buildRanges = (sourceItems) => Object.values(sourceItems || {})
             .filter((item) => isRangeItem(item))
@@ -90,7 +99,8 @@
                     boundMin: boundMin,
                     boundMax: boundMax,
                     lo: isFilled(min.HTML_VALUE) ? toNumber(min.HTML_VALUE) : boundMin,
-                    hi: isFilled(max.HTML_VALUE) ? toNumber(max.HTML_VALUE) : boundMax
+                    hi: isFilled(max.HTML_VALUE) ? toNumber(max.HTML_VALUE) : boundMax,
+                    isPrice: isPriceItem(item)
                 };
             });
 
@@ -266,7 +276,11 @@
                 setSelection(controlName, 'Y');
             }
 
-            refreshCounts();
+            if (APPLY_PRODUCTS_ON_CHANGE) {
+                apply(false);
+            } else {
+                refreshCounts();
+            }
         };
 
         const selectSingle = (item, controlName) => {
@@ -281,7 +295,12 @@
             }
 
             selection.value = next;
-            refreshCounts();
+
+            if (APPLY_PRODUCTS_ON_CHANGE) {
+                apply(false);
+            } else {
+                refreshCounts();
+            }
         };
 
         const setRangeValue = (code, handle, value) => {
@@ -324,7 +343,12 @@
                 hi: list[index].boundMax
             });
             ranges.value = list;
-            refreshCounts();
+
+            if (APPLY_PRODUCTS_ON_CHANGE) {
+                apply(false);
+            } else {
+                refreshCounts();
+            }
         };
 
         // URL изменился (применили фильтр, back/forward) -> черновик подстраивается под него
@@ -422,6 +446,9 @@
             if (withScroll) {
                 document.querySelector('smart-filter')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
+
+            // После применения список и счётчики должны соответствовать черновику.
+            refreshCounts();
         };
 
         /**
@@ -441,8 +468,6 @@
                 params[range.maxName] = null;
             });
 
-            const selectionBefore = selection.value;
-
             selection.value = {};
             ranges.value = ranges.value.map((range) => Object.assign({}, range, {
                 lo: range.boundMin,
@@ -451,10 +476,7 @@
 
             signa.location.set(Object.assign(params, excludePageParams(signa.location.query.value)));
 
-            // URL мог не измениться (фильтр не был применён) — пересчитываем счётчики
-            if (Object.keys(selectionBefore).length === 0) {
-                refreshCounts();
-            }
+            refreshCounts();
         };
 
         return {
@@ -531,7 +553,13 @@
                     filter.setRangeValue(range.code, handle, toNumber(values[handle]));
                 });
 
-                node.noUiSlider.on('change', () => filter.refreshCounts());
+                node.noUiSlider.on('change', () => {
+                    if (APPLY_PRODUCTS_ON_CHANGE) {
+                        filter.apply(false);
+                    } else {
+                        filter.refreshCounts();
+                    }
+                });
             });
         };
 
@@ -582,13 +610,13 @@
                             id=${'sf-' + value.CONTROL_ID}
                             .checked=${filter.isChecked(value.CONTROL_NAME)}
                             onchange=${() => (multiple
-                                ? filter.toggle(value.CONTROL_NAME)
-                                : filter.selectSingle(item, value.CONTROL_NAME))}
+                ? filter.toggle(value.CONTROL_NAME)
+                : filter.selectSingle(item, value.CONTROL_NAME))}
                         >
                         <label class="form-check-label d-flex align-items-center gap-1" for=${'sf-' + value.CONTROL_ID}>
                             ${isFilled(value.PICT)
-                                ? html`<img class="smart-filter__pict rounded" src=${value.PICT} alt="" loading="lazy">`
-                                : null}
+                ? html`<img class="smart-filter__pict rounded" src=${value.PICT} alt="" loading="lazy">`
+                : null}
                             <span>${value.VALUE}</span>
                             ${renderCounter(value)}
                         </label>
@@ -603,8 +631,8 @@
                 ${Object.values(item.VALUES || {}).map((value) => html`
                     <option value=${value.CONTROL_NAME} .selected=${filter.isChecked(value.CONTROL_NAME)}>
                         ${value.VALUE}${isFilled(filter.counter(value.CONTROL_NAME))
-                            ? ' (' + filter.counter(value.CONTROL_NAME) + ')'
-                            : ''}
+                ? ' (' + filter.counter(value.CONTROL_NAME) + ')'
+                : ''}
                     </option>
                 `)}
             </select>
@@ -614,8 +642,8 @@
             <div class="smart-filter__group mb-4">
                 <div class="smart-filter__group-title fw-semibold mb-2">${item.NAME}</div>
                 ${isDropdown(item)
-                    ? renderDropdown(item)
-                    : renderChoices(item, item.DISPLAY_TYPE !== DISPLAY_TYPES.RADIO_BUTTONS)}
+                ? renderDropdown(item)
+                : renderChoices(item, item.DISPLAY_TYPE !== DISPLAY_TYPES.RADIO_BUTTONS)}
             </div>
         `;
 
@@ -631,17 +659,18 @@
                 <div class="card-header bg-white d-flex align-items-center justify-content-between py-3">
                     <span class="fw-semibold">Подбор параметров</span>
                     ${filter.selected.value.length > 0
-                        ? html`<button
+                ? html`<button
                             type="button"
                             class="btn btn-link btn-sm p-0 text-decoration-none"
                             onclick=${() => filter.reset()}
                         >Сбросить</button>`
-                        : null}
+                : null}
                 </div>
 
                 <div class="card-body">
+                    ${filter.ranges.value.filter((range) => range.isPrice).map((range) => renderRange(range))}
                     ${filter.items.map((item) => renderGroup(item))}
-                    ${filter.ranges.value.map((range) => renderRange(range))}
+                    ${filter.ranges.value.filter((range) => !range.isPrice).map((range) => renderRange(range))}
 
                     <button type="button" class="btn btn-primary w-100 mt-2" onclick=${() => filter.apply()}>
                         Показать${filter.total.value ? ' (' + filter.total.value + ')' : ''}

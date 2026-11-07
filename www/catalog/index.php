@@ -17,6 +17,7 @@ addAssetJs([
     'js/catalog/catalog.js',
     'js/catalog/catalog-sort.js',
     'js/catalog/smart-filter.js',
+    'js/catalog/catalog-selected.js',
 ]);
 
 // Смарт-фильтр заполнит эту переменную, список прочитает её по FILTER_NAME
@@ -34,6 +35,8 @@ $arrFilter = [];
 
         <div class="col-12 col-lg-9">
             <?php require $_SERVER['DOCUMENT_ROOT'] . '/local/include/components/catalog_sort.php'; ?>
+
+            <catalog-selected style="height: 60px; display: block; margin-top: 10px;"></catalog-selected>
 
             <div id="catalog-list">
                 <?php require $_SERVER['DOCUMENT_ROOT'] . '/local/include/components/catalog_list.php'; ?>

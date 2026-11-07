@@ -1,8 +1,8 @@
 /**
- * Сортировка каталога (signa).
+ * Сортировка каталога на signa.
  *
- * Конфигурация приходит из шаблона компонента shop:catalog.sort:
- * JSON-скрипт .catalog-sort__config рядом с элементом <catalog-sort>.
+ * Данные приходят из signa-state SortState (их выставляет template.php
+ * компонента shop:catalog.sort). Верстку рисует <catalog-sort>.
  */
 (() => {
     'use strict';
@@ -14,31 +14,24 @@
         return;
     }
 
-    const readConfig = (root) => {
-        const node = root?.querySelector('script.catalog-sort__config');
+    signa.state('SortState', ({ signal }) => signal({
+        options: [],
+        param: 'sort',
+        default: 'default',
+        title: 'Сортировка',
+        showTitle: true,
+    }));
 
-        if (!node) {
-            return {};
-        }
-
-        try {
-            return JSON.parse(node.textContent || '{}');
-        } catch (error) {
-            console.error('[catalog-sort] не удалось прочитать конфигурацию:', error);
-            return {};
-        }
-    };
-
-    signa.component('catalog-sort', ({ html, $this }) => {
-        const config = readConfig($this.closest('.catalog-sort'));
-
-        const options = Array.isArray(config.options) ? config.options : [];
-        const param = config.param || 'sort';
-        const defaultValue = config.default || 'default';
-        const title = config.title || 'Сортировка';
-        const showTitle = config.showTitle !== false;
+    signa.component('catalog-sort', ({ html }, states) => {
+        const sortState = states.SortState;
 
         return () => {
+            const state = sortState.value || {};
+            const options = Array.isArray(state.options) ? state.options : [];
+            const param = state.param || 'sort';
+            const defaultValue = state.default || 'default';
+            const title = state.title || 'Сортировка';
+            const showTitle = state.showTitle !== false;
             const current = signa.location.query.value[param] || defaultValue;
 
             return html`
