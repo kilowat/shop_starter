@@ -10,6 +10,9 @@
  * Вложенные компоненты подключаются с родителем $this, поэтому их шаблоны
  * можно переопределять в папке шаблона shop:catalog, а стандартный поиск
  * шаблонов (shop_bootstrap, signa) продолжает работать.
+ *
+ * Постраничная навигация — отдельные шаблоны bitrix:system.pagenavigation
+ * (classic / show_more / lazy), выбор — параметр PAGINATION_TEMPLATE.
  */
 
 if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) {
@@ -32,6 +35,12 @@ class ShopCatalogComponent extends CBitrixComponent
         $params['PAGE_ELEMENT_COUNT'] = (int) ($params['PAGE_ELEMENT_COUNT'] ?? 0) ?: 12;
         $params['PRICE_CODE'] = $this->normalizePriceCodes($params['PRICE_CODE'] ?? null);
         $params['CACHE_TIME'] = (int) ($params['CACHE_TIME'] ?? 3600);
+
+        // Постраничная навигация — отдельный шаблон bitrix:system.pagenavigation.
+        // classic   — обычные ссылки, переход с полной перезагрузкой страницы;
+        // show_more — кнопка «Показать ещё», контент дописывается AJAX-ом;
+        // lazy      — бесконечная прокрутка без видимой пагинации.
+        $params['PAGINATION_TEMPLATE'] = trim((string) ($params['PAGINATION_TEMPLATE'] ?? '')) ?: 'classic';
 
         $params['SORT_FIELDS'] = $this->normalizeSortFields($params['SORT_FIELDS'] ?? null);
         $params['SORT_DEFAULT'] = $this->normalizeSortDefault(
@@ -241,7 +250,7 @@ class ShopCatalogComponent extends CBitrixComponent
                 'BROWSER_TITLE' => '-',
                 'COMPATIBLE_MODE' => 'N',
                 'DISABLE_INIT_JS_IN_COMPONENT' => 'Y',
-                'PAGER_TEMPLATE' => 'bootstrap_v4',
+                'PAGER_TEMPLATE' => $this->arParams['PAGINATION_TEMPLATE'],
                 'PAGER_TITLE' => 'Товары',
                 'PAGER_SHOW_ALWAYS' => 'N',
                 'DISPLAY_TOP_PAGER' => 'N',

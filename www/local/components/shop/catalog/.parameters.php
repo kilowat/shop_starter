@@ -92,6 +92,17 @@ $arComponentParameters = [
             'TYPE' => 'STRING',
             'DEFAULT' => 'Сортировка',
         ],
+        'PAGINATION_TEMPLATE' => [
+            'PARENT' => 'BASE',
+            'NAME' => 'Шаблон постраничной навигации',
+            'TYPE' => 'LIST',
+            'VALUES' => [
+                'classic' => 'Обычные ссылки (перезагрузка страницы)',
+                'show_more' => 'Показать ещё (дозагрузка AJAX)',
+                'lazy' => 'Ленивая загрузка при прокрутке',
+            ],
+            'DEFAULT' => 'classic',
+        ],
         'CACHE_TIME' => [
             'PARENT' => 'CACHE_SETTINGS',
             'DEFAULT' => 3600,

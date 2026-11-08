@@ -1,6 +1,6 @@
 <?php
 /**
- * Сортировка каталога: передаёт настройки в JS-компонент <catalog-sort>.
+ * Сортировка каталога: серверный <select>, состояние — в URL.
  */
 
 if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) {
@@ -9,7 +9,7 @@ if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) {
 
 $arComponentDescription = [
     'NAME' => 'Сортировка каталога',
-    'DESCRIPTION' => 'Передаёт список сортировок в JS-компонент catalog-sort',
+    'DESCRIPTION' => 'Выводит select сортировки и пишет выбор в URL',
     'PATH' => [
         'ID' => 'shop',
         'NAME' => 'Shop',

@@ -12,6 +12,11 @@ addAssetCss([
     'css/style.css',
 ]);
 
+// Универсальная пагинация: нужна любому списку, поэтому подключается глобально.
+addAssetJs([
+    'js/pagination/pagination.js',
+]);
+
 /** @var CMain $APPLICATION */
 ?><!DOCTYPE html>
 <html lang="ru">

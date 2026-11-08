@@ -53,6 +53,8 @@
 /* noUiSlider под Bootstrap 5 */
 .smart-filter__slider {
     margin: 0.5rem 0.5rem 1.75rem;
+    /* место под ползунок резервируем до инициализации JS — без сдвига вёрстки */
+    min-height: 6px;
 }
 
 .smart-filter .noUi-target {
@@ -104,4 +106,42 @@
     flex: 1 1 auto;
     justify-content: center;
     white-space: nowrap;
+}
+
+/* ---------- Постраничная навигация ---------- */
+
+.pagination-wrap .pagination {
+    --bs-pagination-border-radius: 0.5rem;
+}
+
+.pagination-more__status {
+    min-height: 1.25rem;
+}
+
+/* «Показать ещё»: пока грузим — кнопка не прыгает */
+.pagination-more .btn {
+    min-width: 12rem;
+}
+
+.pagination-more.is-loading .btn {
+    pointer-events: none;
+}
+
+/* Ленивая загрузка: sentinel не занимает места, спиннер виден только при загрузке.
+   Спиннер можно заменить в lazy/template.php, сохранив data-pagination-spinner. */
+.pagination-lazy__sentinel {
+    min-height: 1px;
+}
+
+.pagination-lazy [data-pagination-spinner] {
+    display: none;
+    margin: 1rem auto;
+}
+
+.pagination-lazy.is-loading [data-pagination-spinner] {
+    display: block;
+}
+
+.pagination-lazy.is-done {
+    display: none;
 }

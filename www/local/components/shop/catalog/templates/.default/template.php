@@ -20,9 +20,8 @@ addAssetJs([
     'js/nouislider/nouislider.min.js',
     'js/signa/dist/signa.min.js',
     'js/catalog/catalog.js',
-    'js/catalog/catalog-sort.js',
-    'js/catalog/smart-filter.js',
-    'js/catalog/catalog-selected.js',
+    'js/catalog/filter.js',
+    'js/catalog/sort.js',
 ]);
 ?>
 <div class="container">
@@ -34,14 +33,10 @@ addAssetJs([
             </div>
         </aside>
 
-        <div class="col-12 col-lg-9">
+        <div class="col-12 col-lg-9" id="catalog-results">
             <?php $component->renderSort(); ?>
-
-            <div class="row g-4">
-                <catalog-selected></catalog-selected>
-            </div>
-
-            <div id="catalog-list">
+            <br>
+            <div id="catalog-list" data-pagination-list>
                 <?php $component->renderList(); ?>
             </div>
         </div>

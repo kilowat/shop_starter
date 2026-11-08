@@ -1,9 +1,9 @@
 <?php
 /**
- * Подготовка данных умного фильтра для signa-компонента <smart-filter>.
+ * Подготовка данных умного фильтра для серверной вёрстки (template.php).
  *
- * Компонент отдаёт строки уже через htmlspecialcharsbx, а uhtml экранирует
- * значения сам, поэтому сущности декодируем здесь.
+ * Компонент отдаёт строки уже через htmlspecialcharsbx, а шаблон экранирует
+ * их повторно — поэтому сущности декодируем здесь один раз.
  */
 
 if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) {
@@ -49,15 +49,10 @@ foreach ($arResult['ITEMS'] as $id => $item) {
     }
 }
 
-$arResult['SIGNA_DATA'] = [
-    'ITEMS' => $items,
-    'PRICES' => $arResult['PRICES'] ?? [],
-    'FILTER_NAME' => $arResult['FILTER_NAME'] ?? '',
-    'FORM_ACTION' => htmlspecialcharsback((string)($arResult['FORM_ACTION'] ?? '')),
-    'FILTER_URL' => htmlspecialcharsback((string)($arResult['FILTER_URL'] ?? '')),
-    'ELEMENT_COUNT' => $arResult['ELEMENT_COUNT'] ?? null,
-    'HIDDEN' => $decode($arResult['HIDDEN'] ?? []),
-];
+$arResult['ITEMS'] = $items;
+$arResult['FORM_ACTION'] = htmlspecialcharsback((string)($arResult['FORM_ACTION'] ?? ''));
+$arResult['FILTER_URL'] = htmlspecialcharsback((string)($arResult['FILTER_URL'] ?? ''));
+$arResult['HIDDEN'] = $decode($arResult['HIDDEN'] ?? []);
 
 /**
  * Считает товары по фильтру так же, как это делает bitrix:catalog.section:
@@ -129,10 +124,15 @@ if (($arParams['SKIP_COUNT'] ?? 'N') !== 'Y') {
         : 0;
 }
 
-// Счётчики по значениям: { CONTROL_NAME: число товаров } — их отдаём контроллеру
+// Счётчики по значениям: { CONTROL_NAME: число товаров } — отдаём контроллеру
 $counts = [];
 
 foreach ($items as $item) {
+    // диапазон (цена) приходит как VALUES.MIN / VALUES.MAX, а не списком значений
+    if (isset($item['VALUES']['MIN'], $item['VALUES']['MAX'])) {
+        continue;
+    }
+
     foreach ($item['VALUES'] ?? [] as $value) {
         if (!empty($value['CONTROL_NAME'])) {
             $counts[$value['CONTROL_NAME']] = (int)($value['ELEMENT_COUNT'] ?? 0);
@@ -142,4 +142,3 @@ foreach ($items as $item) {
 
 $arResult['COUNTS'] = $counts;
 $arResult['TOTAL'] = (int)($arResult['TOTAL_COUNT'] ?? 0);
-$arResult['SIGNA_DATA']['TOTAL'] = $arResult['TOTAL'];
