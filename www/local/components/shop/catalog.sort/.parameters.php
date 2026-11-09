@@ -1,36 +1,18 @@
 <?php
 /**
  * Параметры компонента сортировки.
+ *
+ * FIELDS — обычный массив с полями сортировки. Он передаётся из кода
+ * (local/include/components/catalog.sort.php), поэтому в форме настроек
+ * его нет и JSON не используется.
  */
 
 if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) {
     die();
 }
 
-$defaultFields = [
-    [
-        'CODE' => 'default',
-        'NAME' => 'По популярности',
-        'FIELD' => 'sort',
-        'ORDER' => 'asc',
-    ],
-    [
-        'CODE' => 'new',
-        'NAME' => 'Сначала новые',
-        'FIELD' => 'id',
-        'ORDER' => 'desc',
-    ],
-];
-
 $arComponentParameters = [
     'PARAMETERS' => [
-        'FIELDS' => [
-            'NAME' => 'Поля сортировки (JSON)',
-            'TYPE' => 'STRING',
-            'ROWS' => 8,
-            'COLS' => 60,
-            'DEFAULT' => json_encode($defaultFields, JSON_UNESCAPED_UNICODE),
-        ],
         'DEFAULT' => [
             'NAME' => 'Код сортировки по умолчанию',
             'TYPE' => 'STRING',
@@ -40,6 +22,11 @@ $arComponentParameters = [
             'NAME' => 'Имя параметра URL',
             'TYPE' => 'STRING',
             'DEFAULT' => 'sort',
+        ],
+        'SORT_NAME' => [
+            'NAME' => 'Имя глобальной переменной',
+            'TYPE' => 'STRING',
+            'DEFAULT' => 'arrSort',
         ],
         'TITLE' => [
             'NAME' => 'Заголовок',
