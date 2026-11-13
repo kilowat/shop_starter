@@ -68,8 +68,6 @@ $APPLICATION->IncludeComponent(
         'COMPATIBLE_MODE' => 'N',
         'DISABLE_INIT_JS_IN_COMPONENT' => 'Y',
 
-        // Шаблон bitrix:system.pagenavigation: classic | show_more | lazy
-        'PAGER_TEMPLATE' => 'lazy',
         'PAGER_TITLE' => 'Товары',
         'PAGER_SHOW_ALWAYS' => 'N',
         'DISPLAY_TOP_PAGER' => 'N',

@@ -1,21 +1,14 @@
 <?php
-/**
- * Шапка шаблона shop.
- * CSS подключается функцией проекта addAssetCss() из local/src/func.php.
- */
-if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) {
-    die();
-}
 
 addAssetCss([
     'css/bootstrap/bootstrap.min.css',
     'css/style.css',
 ]);
 
-// Универсальная пагинация: нужна любому списку, поэтому подключается глобально.
 addAssetJs([
-    'js/pagination/pagination.js',
+    'js/signa/dist/signa.min.js',
 ]);
+
 
 /** @var CMain $APPLICATION */
 ?><!DOCTYPE html>
@@ -23,7 +16,6 @@ addAssetJs([
 
 <head>
     <?php $APPLICATION->ShowHead(); ?>
-    <script>window.__BITRIX_SESSID__ = '<?= htmlspecialcharsbx(bitrix_sessid()) ?>';</script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?php $APPLICATION->ShowTitle(); ?></title>
@@ -59,3 +51,26 @@ addAssetJs([
     </header>
 
     <main class="flex-grow-1 py-4">
+        <div class="container">
+            <div class="row g-4">
+
+                <?php $APPLICATION->AddBufferContent(function () use ($APPLICATION) {
+
+                    $sidebar = trim($APPLICATION->GetViewContent('sidebar'));
+
+                    if ($sidebar === '') {
+                        return '';
+                    }
+
+                    ob_start(); ?>
+
+                    <aside class="col-12 col-lg-3">
+                        <div class="catalog-sidebar">
+                            <?= $sidebar ?>
+                        </div>
+                    </aside>
+
+                    <?php return ob_get_clean();
+                }); ?>
+
+                <div class="col-12 col-lg">

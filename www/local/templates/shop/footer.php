@@ -6,6 +6,9 @@ if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) {
     die();
 }
 ?>
+</div><!-- /col-lg -->
+</div><!-- /row -->
+</div><!-- /container -->
 </main>
 
 <footer class="bg-white border-top py-3 mt-auto">
@@ -18,4 +21,5 @@ if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) {
 </footer>
 
 </body>
+
 </html>
