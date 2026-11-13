@@ -1,0 +1,71 @@
+/* ---------- Умный фильтр (signa) ---------- */
+
+.smart-filter__group-title {
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--bs-secondary-color);
+}
+
+.smart-filter__count {
+    font-size: 0.75rem;
+    color: var(--bs-secondary-color);
+}
+
+.smart-filter__pict {
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+}
+
+/* noUiSlider под Bootstrap 5 */
+.smart-filter__slider {
+    margin: 0.5rem 0.5rem 1.75rem;
+    /* место под ползунок резервируем до инициализации JS — без сдвига вёрстки */
+    min-height: 6px;
+}
+
+.smart-filter .noUi-target {
+    background: var(--bs-secondary-bg, #e9ecef);
+    border: 0;
+    border-radius: 0.5rem;
+    box-shadow: none;
+    height: 6px;
+}
+
+.smart-filter .noUi-connect {
+    background: var(--bs-primary, #0d6efd);
+}
+
+.smart-filter .noUi-handle {
+    width: 18px;
+    height: 18px;
+    top: -6px;
+    right: -9px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid var(--bs-primary, #0d6efd);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    cursor: pointer;
+}
+
+.smart-filter .noUi-handle::before,
+.smart-filter .noUi-handle::after {
+    display: none;
+}
+
+.smart-filter__item {
+    transition: opacity .2s ease;
+}
+
+/* Число выводится из атрибута самого span */
+.smart-filter__count::after {
+    content: attr(data-count);
+    color: var(--bs-secondary-color, #6c757d);
+    font-size: .85em;
+}
+
+/* Фейд, если подходящих товаров 0 (отмеченные пункты не гасим) */
+.smart-filter__item:has(.smart-filter__count[data-count="0"]):not(:has(input:checked)) {
+    opacity: .4;
+}

@@ -1,12 +1,11 @@
 <?php
 
 addAssetCss([
-    'css/bootstrap/bootstrap.min.css',
-    'css/style.css',
+    'lib/bootstrap/bootstrap.min.css',
 ]);
 
 addAssetJs([
-    'js/signa/dist/signa.min.js',
+    'lib/signa/dist/signa.min.js',
 ]);
 
 

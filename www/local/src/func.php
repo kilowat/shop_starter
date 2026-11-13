@@ -84,7 +84,7 @@ function srcAsset(string $src, bool|string $domain = false): string|false
 /**
  * Получить сконвертированое  в wapp статическое изображение
  */
-function imgAsset(string $src, ?int $quality = null,  bool|string $domain = false,): string|false
+function imgAsset(string $src, ?int $quality = null, bool|string $domain = false, ): string|false
 {
     return Asset::img($src, $quality, $domain);
 }
@@ -153,7 +153,8 @@ function imgArray(int|string $id, array|string $settings = [], ?bool $webp = nul
  */
 function imgTag(array|string|int $img, array|string $settings = [], array $attrs = [], ?bool $webp = null): string
 {
-    if (is_array($img)) return Image::getTag($img, $attrs);
+    if (is_array($img))
+        return Image::getTag($img, $attrs);
 
     return Image::getTagById($img, $settings, $attrs, $webp);
 }
@@ -161,7 +162,7 @@ function imgTag(array|string|int $img, array|string $settings = [], array $attrs
 /**
  * Перевести по коду
  */
-function __t(string|array|null $value = null, string|array|null $options = null, bool $strip_tag = false,): mixed
+function __t(string|array|null $value = null, string|array|null $options = null, bool $strip_tag = false, ): mixed
 {
     $loc = \Bitrix\Main\DI\ServiceLocator::getInstance()->get(App\Helper\Localization::class);
 
@@ -247,13 +248,6 @@ function incFile(string $file, array $params = [], bool $editable = false): void
 function cfg(string $path, mixed $default = null)
 {
     return Application::config($path, $default);
-}
-/**
- * Отдать ответ в виде json html по указному viewPath
- */
-function sendAjaxResponse(string $viewPath, array $viewParams = [], array $additionalParams = [], bool $withSiteTemplate = false)
-{
-    AjaxHtmlResponse::sendResponse($viewPath, $viewParams, $additionalParams, $withSiteTemplate);
 }
 
 /**
