@@ -9,7 +9,7 @@ if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) {
     die();
 }
 ?>
-<div class="catalog-fragment">
+<div class="catalog">
     <? if (empty($arResult['ITEMS'] ?? $_REQUEST['set_filter'] == 'y')): ?>
         <div class="alert alert-light border mb-0">По выбранным условиям товары не найдены.</div>
     <? else: ?>
@@ -17,7 +17,27 @@ if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) {
             <? foreach ($arResult['ITEMS'] as $item): ?>
                 <?
                 $name = htmlspecialcharsbx($item['NAME']);
+                $hasOffers = !empty($item['OFFERS']);
+
+                // Стандартное получение цены для простого товара
                 $price = $item['ITEM_PRICES'][$item['ITEM_PRICE_SELECTED']]['PRINT_PRICE'] ?? '';
+
+                // Если есть торговые предложения — берём минимальную цену из OFFERS
+                if ($hasOffers) {
+                    $minOfferPrice = null;
+                    foreach ($item['OFFERS'] as $offer) {
+                        if (empty($offer['ITEM_PRICES'][$offer['ITEM_PRICE_SELECTED']]['PRINT_PRICE'])) {
+                            continue;
+                        }
+                        $offerPriceValue = $offer['ITEM_PRICES'][$offer['ITEM_PRICE_SELECTED']]['PRICE']
+                            ?? $offer['ITEM_PRICES'][$offer['ITEM_PRICE_SELECTED']]['VALUE']
+                            ?? 0;
+                        if ($minOfferPrice === null || $offerPriceValue < $minOfferPrice) {
+                            $minOfferPrice = $offerPriceValue;
+                            $price = $offer['ITEM_PRICES'][$offer['ITEM_PRICE_SELECTED']]['PRINT_PRICE'];
+                        }
+                    }
+                }
                 ?>
                 <div class="col" data-pagination-item>
                     <article class="card h-100 product-card">
@@ -37,9 +57,11 @@ if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) {
                             </h3>
 
                             <div class="fs-5 fw-semibold mt-auto">
-                                <?= $price
-                                    ? (!empty($item['OFFERS']) ? 'от ' : '') . $price
-                                    : 'Цена по запросу' ?>
+                                <? if ($price): ?>
+                                    <?= $hasOffers ? 'от ' : '' ?>            <?= $price ?>
+                                <? else: ?>
+                                    Цена по запросу
+                                <? endif; ?>
                             </div>
                         </div>
 
@@ -53,7 +75,7 @@ if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) {
         </div>
 
         <? if (!empty($arResult['NAV_STRING'])): ?>
-            <div class="catalog-pagination"><?= $arResult['NAV_STRING'] ?></div>
+            <div class="catalog-pagination mt-4"><?= $arResult['NAV_STRING'] ?></div>
         <? endif; ?>
     <? endif; ?>
 </div>

@@ -69,10 +69,11 @@ $APPLICATION->IncludeComponent(
         'DISABLE_INIT_JS_IN_COMPONENT' => 'Y',
 
         'PAGER_TITLE' => 'Товары',
+        'PAGER_TEMPLATE' => 'shop_bootstrap',
         'PAGER_SHOW_ALWAYS' => 'N',
         'DISPLAY_TOP_PAGER' => 'N',
         'DISPLAY_BOTTOM_PAGER' => 'Y',
     ],
     false,
-    ['HIDE_ICONS' => 'Y']
+    ['HIDE_ICONS' => 'N']
 );

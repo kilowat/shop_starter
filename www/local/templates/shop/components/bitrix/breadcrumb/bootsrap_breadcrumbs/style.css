@@ -1,0 +1,11 @@
+/* Хлебные крошки: разметка и цвета — из Bootstrap 5 (breadcrumb / breadcrumb-item).
+   Компонент bitrix:breadcrumb подключает этот файл автоматически,
+   поэтому здесь остаются только мелкие правки поверх Bootstrap. */
+.breadcrumb {
+    --bs-breadcrumb-divider: '/';
+    font-size: 0.875rem;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+    color: var(--bs-secondary-color);
+}

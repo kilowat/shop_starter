@@ -22,7 +22,7 @@ $default = (string)($arResult['DEFAULT'] ?? '');
 $title = (string)($arResult['TITLE'] ?? 'Сортировка');
 $showTitle = ($arResult['SHOW_TITLE'] ?? true) !== false;
 ?>
-<div class="d-flex align-items-center gap-2">
+<div class="d-flex align-items-center gap-2 mb-4">
     <?php if ($showTitle): ?>
         <label class="small text-muted mb-0" for="catalog-sort"><?= $h($title) ?></label>
     <?php endif; ?>

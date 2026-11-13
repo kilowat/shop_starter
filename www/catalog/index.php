@@ -14,6 +14,4 @@ $sidebar->end();
 
 incFile('components/catalog_sort.php');
 incFile('components/catalog_section.php');
-?>
-
-<?php require($_SERVER['DOCUMENT_ROOT'] . '/bitrix/footer.php'); ?>
+?><?php require($_SERVER['DOCUMENT_ROOT'] . '/bitrix/footer.php'); ?>

@@ -33,7 +33,7 @@ $result = $APPLICATION->IncludeComponent(
         'HIDE_NOT_AVAILABLE' => 'N',
     ],
     false,
-    ['HIDE_ICONS' => 'Y'],
+    ['HIDE_ICONS' => 'N'],
     true
 );
 

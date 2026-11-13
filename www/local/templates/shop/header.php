@@ -51,6 +51,20 @@ addAssetJs([
 
     <main class="flex-grow-1 py-4">
         <div class="container">
+
+            <?php if (!isMainPage()): ?>
+                <?php $APPLICATION->IncludeComponent(
+                    'bitrix:breadcrumb',
+                    'bootsrap_breadcrumbs',
+                    [
+                        'START_FROM' => '0',
+                        'PATH' => '',
+                        'SITE_ID' => '',
+                    ],
+                    false
+                ); ?>
+            <?php endif; ?>
+
             <div class="row g-4">
 
                 <?php $APPLICATION->AddBufferContent(function () use ($APPLICATION) {

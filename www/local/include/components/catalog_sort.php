@@ -35,5 +35,5 @@ $APPLICATION->IncludeComponent(
         'SHOW_TITLE' => 'Y',
     ],
     false,
-    ['HIDE_ICONS' => 'Y']
+    ['HIDE_ICONS' => 'N']
 );
