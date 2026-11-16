@@ -8,6 +8,13 @@ use CUser;
 
 final class AuthService
 {
+    private readonly LoginAttempts $loginAttempts;
+
+    public function __construct(?LoginAttempts $loginAttempts = null)
+    {
+        $this->loginAttempts = $loginAttempts ?? new LoginAttempts();
+    }
+
     /**
      * Вход по e-mail и паролю (штатная авторизация Битрикса).
      *
@@ -17,13 +24,23 @@ final class AuthService
     {
         global $USER;
 
-        $user = $this->findUserByEmail($data->email);
+        try {
+            $user = $this->findUserByEmail($data->email);
 
-        $result = $USER->Login($user['LOGIN'], $data->password, $data->remember ? 'Y' : 'N');
+            $result = $USER->Login($user['LOGIN'], $data->password, $data->remember ? 'Y' : 'N');
+        } catch (\Throwable $e) {
+            $this->loginAttempts->hit($data->email);
+
+            throw $e;
+        }
 
         if (is_array($result) && ($result['TYPE'] ?? '') === 'ERROR') {
+            $this->loginAttempts->hit($data->email);
+
             throw new SystemException($this->cleanMessage($result['MESSAGE'] ?? 'Ошибка авторизации'));
         }
+
+        $this->loginAttempts->clear($data->email);
 
         return ['user' => $this->getUserData((int) $USER->GetID())];
     }

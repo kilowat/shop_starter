@@ -13,8 +13,13 @@ final class CaptchaActionFilter extends Base
 {
     public const ERROR_CAPTCHA_REQUIRED = 'captcha_required';
 
-    public function __construct(private readonly int $attemptsLimit = 3)
-    {
+    private readonly LoginAttempts $loginAttempts;
+
+    public function __construct(
+        private readonly int $attemptsLimit = 3,
+        ?LoginAttempts $loginAttempts = null,
+    ) {
+        $this->loginAttempts = $loginAttempts ?? new LoginAttempts();
         parent::__construct();
     }
 
@@ -59,12 +64,6 @@ final class CaptchaActionFilter extends Base
 
     private function getLoginAttempts(string $email): int
     {
-        global $DB;
-
-        $row = $DB->Query(
-            "SELECT LOGIN_ATTEMPTS FROM b_user WHERE EMAIL = '" . $DB->ForSQL($email) . "' ORDER BY ID ASC LIMIT 1"
-        )->Fetch();
-
-        return (int) ($row['LOGIN_ATTEMPTS'] ?? 0);
+        return $this->loginAttempts->get($email);
     }
 }
