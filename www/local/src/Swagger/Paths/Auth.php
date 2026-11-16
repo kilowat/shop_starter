@@ -8,6 +8,7 @@ use App\Swagger\Schemas\ApiError;
 use App\Swagger\Schemas\Auth\AuthResponse;
 use App\Swagger\Schemas\Auth\AuthResultResponse;
 use App\Swagger\Schemas\Auth\CaptchaResponse;
+use App\Swagger\Schemas\Auth\RegistrationResponse;
 
 #[OA\Tag(name: 'Auth', description: 'Авторизация и восстановление пароля')]
 final class Auth
@@ -66,6 +67,163 @@ final class Auth
         ],
     )]
     public function login(): void
+    {
+    }
+
+
+    // POST /api/auth/register
+
+    #[OA\Operation\Post(
+        path: '/api/auth/register',
+        operationId: 'authRegister',
+        summary: 'Регистрация по e-mail',
+        description: 'Пароль генерируется случайно. Имя и телефон опциональны; без имени присваивается «Пользователь XXXXX». Подтверждение кодом из письма — только если включена опция ядра new_user_registration_email_confirmation; иначе пользователь сразу авторизуется.',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: [
+                new OA\MediaType(
+                    mediaType: 'application/json',
+                    schema: new OA\Schema(
+                        type: 'object',
+                        required: ['email'],
+                        properties: [
+                            new OA\Property(
+                                property: 'email',
+                                schema: new OA\Schema(type: 'string', format: 'email', example: 'ivanov@example.com'),
+                            ),
+                            new OA\Property(
+                                property: 'name',
+                                schema: new OA\Schema(type: 'string', example: 'Иван Иванов', description: 'Необязательно; по умолчанию «Пользователь XXXXX»'),
+                            ),
+                            new OA\Property(
+                                property: 'phone',
+                                schema: new OA\Schema(type: 'string', example: '+79001234567', description: 'Необязательно'),
+                            ),
+                            new OA\Property(
+                                property: 'remember',
+                                schema: new OA\Schema(type: 'boolean', default: false, description: 'Запомнить меня после подтверждения'),
+                            ),
+                            new OA\Property(
+                                property: 'captcha_word',
+                                schema: new OA\Schema(type: 'string', example: 'a1b2c', description: 'Код с картинки, если включена опция captcha_registration'),
+                            ),
+                            new OA\Property(
+                                property: 'captcha_sid',
+                                schema: new OA\Schema(type: 'string', example: '0a1b2c3d4e5f', description: 'ID капчи из GET /api/auth/captcha'),
+                            ),
+                        ],
+                    ),
+                ),
+            ],
+        ),
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Пользователь создан; подтверждение требуется только при включённой опции ядра',
+                content: new OA\Schema(ref: RegistrationResponse::class),
+            ),
+            new OA\Response(
+                response: 400,
+                description: 'Ошибка запроса',
+                content: new OA\Schema(ref: ApiError::class),
+            ),
+        ],
+    )]
+    public function register(): void
+    {
+    }
+
+
+    // POST /api/auth/register/confirm
+
+    #[OA\Operation\Post(
+        path: '/api/auth/register/confirm',
+        operationId: 'authRegisterConfirm',
+        summary: 'Подтвердить регистрацию',
+        description: 'Проверяет код из письма, активирует пользователя и авторизует его.',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: [
+                new OA\MediaType(
+                    mediaType: 'application/json',
+                    schema: new OA\Schema(
+                        type: 'object',
+                        required: ['email', 'code'],
+                        properties: [
+                            new OA\Property(
+                                property: 'email',
+                                schema: new OA\Schema(type: 'string', format: 'email', example: 'ivanov@example.com', description: 'E-mail, указанный при регистрации'),
+                            ),
+                            new OA\Property(
+                                property: 'code',
+                                schema: new OA\Schema(type: 'string', example: '123456'),
+                            ),
+                            new OA\Property(
+                                property: 'remember',
+                                schema: new OA\Schema(type: 'boolean', default: false, description: 'Запомнить меня'),
+                            ),
+                        ],
+                    ),
+                ),
+            ],
+        ),
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Успешный ответ',
+                content: new OA\Schema(ref: AuthResponse::class),
+            ),
+            new OA\Response(
+                response: 400,
+                description: 'Ошибка запроса',
+                content: new OA\Schema(ref: ApiError::class),
+            ),
+        ],
+    )]
+    public function confirmRegistration(): void
+    {
+    }
+
+
+    // POST /api/auth/register/resend
+
+    #[OA\Operation\Post(
+        path: '/api/auth/register/resend',
+        operationId: 'authRegisterResend',
+        summary: 'Повторить код подтверждения',
+        description: 'Повторно отправляет код подтверждения. Повторная отправка — не чаще раза в минуту.',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: [
+                new OA\MediaType(
+                    mediaType: 'application/json',
+                    schema: new OA\Schema(
+                        type: 'object',
+                        required: ['email'],
+                        properties: [
+                            new OA\Property(
+                                property: 'email',
+                                schema: new OA\Schema(type: 'string', format: 'email', example: 'ivanov@example.com'),
+                            ),
+                        ],
+                    ),
+                ),
+            ],
+        ),
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Успешный ответ',
+                content: new OA\Schema(ref: AuthResultResponse::class),
+            ),
+            new OA\Response(
+                response: 400,
+                description: 'Ошибка запроса',
+                content: new OA\Schema(ref: ApiError::class),
+            ),
+        ],
+    )]
+    public function resendConfirmation(): void
     {
     }
 
@@ -139,6 +297,77 @@ final class Auth
         ],
     )]
     public function me(): void
+    {
+    }
+
+
+    // POST /api/auth/profile/update
+
+    #[OA\Operation\Post(
+        path: '/api/auth/profile/update',
+        operationId: 'authProfileUpdate',
+        summary: 'Обновить профиль',
+        description: 'Обновляет имя и/или телефон текущего пользователя. Требуется авторизация.',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: [
+                new OA\MediaType(
+                    mediaType: 'application/json',
+                    schema: new OA\Schema(
+                        type: 'object',
+                        properties: [
+                            new OA\Property(
+                                property: 'name',
+                                schema: new OA\Schema(type: 'string', example: 'Иван Иванов'),
+                            ),
+                            new OA\Property(
+                                property: 'phone',
+                                schema: new OA\Schema(type: 'string', example: '+79001234567'),
+                            ),
+                        ],
+                    ),
+                ),
+            ],
+        ),
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Успешный ответ',
+                content: new OA\Schema(ref: AuthResponse::class),
+            ),
+            new OA\Response(
+                response: 400,
+                description: 'Ошибка запроса',
+                content: new OA\Schema(ref: ApiError::class),
+            ),
+        ],
+    )]
+    public function updateProfile(): void
+    {
+    }
+
+
+    // POST /api/auth/password/change
+
+    #[OA\Operation\Post(
+        path: '/api/auth/password/change',
+        operationId: 'authPasswordChange',
+        summary: 'Запросить смену пароля',
+        description: 'Отправляет письмо с контрольным словом на e-mail текущего пользователя. Новый пароль устанавливается через POST /api/auth/password/reset. Требуется авторизация.',
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Успешный ответ',
+                content: new OA\Schema(ref: AuthResultResponse::class),
+            ),
+            new OA\Response(
+                response: 400,
+                description: 'Ошибка запроса',
+                content: new OA\Schema(ref: ApiError::class),
+            ),
+        ],
+    )]
+    public function passwordChange(): void
     {
     }
 

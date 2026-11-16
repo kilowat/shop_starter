@@ -5,10 +5,18 @@ declare(strict_types=1);
 namespace App\Auth;
 
 use Bitrix\Main\Engine\ActionFilter\Base;
+use Bitrix\Main\Engine\Controller;
 use Bitrix\Main\Error;
 use Bitrix\Main\Event;
 use Bitrix\Main\EventResult;
 
+/**
+ * Владеет механизмом попыток по e-mail: проверяет счётчик и требует капчу
+ * после лимита (onBeforeAction), засчитывает попытку перед выполнением действия
+ * и сбрасывает счётчик при успехе (onAfterAction). Если действие выбросило
+ * исключение, ядро не вызывает onAfterAction — попытка остаётся засчитанной.
+ * Сервисы и контроллер о механизме попыток не знают.
+ */
 final class CaptchaActionFilter extends Base
 {
     public const ERROR_CAPTCHA_REQUIRED = 'captcha_required';
@@ -19,51 +27,79 @@ final class CaptchaActionFilter extends Base
         private readonly int $attemptsLimit = 3,
         ?LoginAttempts $loginAttempts = null,
     ) {
-        $this->loginAttempts = $loginAttempts ?? new LoginAttempts();
         parent::__construct();
+        $this->loginAttempts = $loginAttempts ?? new LoginAttempts();
     }
 
     public function onBeforeAction(Event $event)
     {
-        $request = $this->getAction()->getController()->getRequest();
-
-        $data = $request->isJson()
-            ? $request->getJsonList()->toArray()
-            : $request->getPostList()->toArray();
-
+        $data = $this->getRequestData();
         $email = trim((string) ($data['email'] ?? ''));
 
-        if ($email === '' || $this->getLoginAttempts($email) < $this->attemptsLimit) {
+        if ($email === '') {
             return null;
         }
 
-        global $APPLICATION;
+        if ($this->loginAttempts->get($email) >= $this->attemptsLimit && !$this->checkCaptcha($data)) {
+            $sid = $this->generateCaptcha();
 
-        if (
-            $APPLICATION->CaptchaCheckCode(
-                (string) ($data['captcha_word'] ?? ''),
-                (string) ($data['captcha_sid'] ?? ''),
-            )
-        ) {
-            return null;
+            $this->addError(new Error(
+                'Введите код с картинки',
+                self::ERROR_CAPTCHA_REQUIRED,
+                [
+                    'captcha_sid' => $sid,
+                    'captcha_url' => '/bitrix/tools/captcha.php?captcha_sid=' . $sid,
+                ],
+            ));
+
+            return new EventResult(EventResult::ERROR, null, null, $this);
         }
 
-        $sid = $APPLICATION->CaptchaGetCode();
+        $this->loginAttempts->hit($email);
 
-        $this->addError(new Error(
-            'Введите код с картинки',
-            self::ERROR_CAPTCHA_REQUIRED,
-            [
-                'captcha_sid' => $sid,
-                'captcha_url' => '/bitrix/tools/captcha.php?captcha_sid=' . $sid,
-            ],
-        ));
-
-        return new EventResult(EventResult::ERROR, null, null, $this);
+        return null;
     }
 
-    private function getLoginAttempts(string $email): int
+    public function onAfterAction(Event $event)
     {
-        return $this->loginAttempts->get($email);
+        $controller = $event->getParameter('controller');
+
+        if (!$controller instanceof Controller || $controller->getErrors() !== []) {
+            return null;
+        }
+
+        $email = trim((string) ($this->getRequestData()['email'] ?? ''));
+
+        if ($email !== '') {
+            $this->loginAttempts->clear($email);
+        }
+
+        return null;
+    }
+
+    private function getRequestData(): array
+    {
+        $request = $this->getAction()->getController()->getRequest();
+
+        return $request->isJson()
+            ? $request->getJsonList()->toArray()
+            : $request->getPostList()->toArray();
+    }
+
+    private function checkCaptcha(array $data): bool
+    {
+        global $APPLICATION;
+
+        return $APPLICATION->CaptchaCheckCode(
+            (string) ($data['captcha_word'] ?? ''),
+            (string) ($data['captcha_sid'] ?? ''),
+        );
+    }
+
+    private function generateCaptcha(): string
+    {
+        global $APPLICATION;
+
+        return $APPLICATION->CaptchaGetCode();
     }
 }

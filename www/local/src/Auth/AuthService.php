@@ -1,48 +1,130 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Auth;
 
+use App\Auth\Internal\ErrorMessage;
+use App\Auth\Registration\ConfirmRegistrationRequest;
+use App\Auth\Registration\RegisterRequest;
+use App\Auth\Registration\RegistrationService;
 use Bitrix\Main\SystemException;
-use Bitrix\Main\UserTable;
 use CUser;
 
+/**
+ * Фасад авторизации: вход по e-mail и паролю, регистрация (подтверждение —
+ * по опции ядра), обновление профиля, смена и восстановление пароля через
+ * контрольное слово из письма (штатные механизмы CUser).
+ */
 final class AuthService
 {
-    private readonly LoginAttempts $loginAttempts;
+    private readonly UserLocator $users;
+    private readonly RegistrationService $registration;
 
-    public function __construct(?LoginAttempts $loginAttempts = null)
+    public function __construct(?UserLocator $users = null)
     {
-        $this->loginAttempts = $loginAttempts ?? new LoginAttempts();
+        $this->users = $users ?? new UserLocator();
+        $this->registration = new RegistrationService($this->users);
     }
 
     /**
-     * Вход по e-mail и паролю (штатная авторизация Битрикса).
+     * Вход по e-mail и паролю.
      *
-     * @return array{user: array{id, login, email, name}}
+     * @return array{user: array{id: int, login: string, email: string, name: string, phone: string}}
      */
     public function login(LoginRequest $data): array
     {
         global $USER;
 
-        try {
-            $user = $this->findUserByEmail($data->email);
+        $user = $this->users->findOrFail($data->email, 'Неверный e-mail или пароль');
 
-            $result = $USER->Login($user['LOGIN'], $data->password, $data->remember ? 'Y' : 'N');
-        } catch (\Throwable $e) {
-            $this->loginAttempts->hit($data->email);
-
-            throw $e;
-        }
+        $result = $USER->Login(
+            (string) $user['LOGIN'],
+            $data->password,
+            $data->remember ? 'Y' : 'N',
+        );
 
         if (is_array($result) && ($result['TYPE'] ?? '') === 'ERROR') {
-            $this->loginAttempts->hit($data->email);
-
-            throw new SystemException($this->cleanMessage($result['MESSAGE'] ?? 'Ошибка авторизации'));
+            throw new SystemException(ErrorMessage::fromResult($result, 'Неверный e-mail или пароль'));
         }
 
-        $this->loginAttempts->clear($data->email);
+        return ['user' => $this->users->getData((int) $USER->GetID())];
+    }
 
-        return ['user' => $this->getUserData((int) $USER->GetID())];
+    /**
+     * @return array{registered: true, user?: array{id: int, login: string, email: string, name: string, phone: string}, confirmation?: array{email: string, resend_after: int}}
+     */
+    public function register(RegisterRequest $data): array
+    {
+        return $this->registration->register($data);
+    }
+
+    /**
+     * Регистрация без подтверждения для заказа: данные из заказа, случайный пароль,
+     * сразу авторизует; возвращает данные нового пользователя (включая пароль).
+     *
+     * @param array{email: string, name?: string, phone?: string} $data
+     * @return array{id: int, login: string, email: string, name: string, phone: string, password: string}
+     */
+    public function registerByEmail(array $data): array
+    {
+        return $this->registration->registerByEmail($data);
+    }
+
+    /**
+     * @return array{user: array{id: int, login: string, email: string, name: string, phone: string}}
+     */
+    public function confirmRegistration(ConfirmRegistrationRequest $data): array
+    {
+        return $this->registration->confirm($data);
+    }
+
+    /**
+     * @return array{sent: true, resend_after: int}
+     */
+    public function resendConfirmation(string $email): array
+    {
+        return $this->registration->resend($email);
+    }
+
+    /**
+     * Обновить имя и/или телефон текущего пользователя.
+     *
+     * @return array{user: array{id: int, login: string, email: string, name: string, phone: string}}
+     */
+    public function updateProfile(string $name = '', string $phone = ''): array
+    {
+        global $USER;
+
+        $userId = (int) $USER->GetID();
+        $fields = [];
+
+        if (trim($name) !== '') {
+            $fields['NAME'] = trim($name);
+        }
+
+        if (trim($phone) !== '') {
+            $fields['PERSONAL_PHONE'] = trim($phone);
+        }
+
+        if ($fields !== [] && $USER->Update($userId, $fields) === false) {
+            throw new SystemException(ErrorMessage::clean($USER->LAST_ERROR ?: 'Не удалось обновить профиль'));
+        }
+
+        return ['user' => $this->users->getData($userId)];
+    }
+
+    /**
+     * Смена пароля: письмо с контрольным словом на e-mail текущего пользователя,
+     * затем новый пароль устанавливается через resetPassword (как при восстановлении).
+     *
+     * @return array{sent: true}
+     */
+    public function requestPasswordChange(): array
+    {
+        global $USER;
+
+        return $this->requestPasswordReset((string) $USER->GetEmail());
     }
 
     /**
@@ -62,13 +144,13 @@ final class AuthService
     /**
      * Текущий авторизованный пользователь.
      *
-     * @return array{user: array{id, login, email, name}}
+     * @return array{user: array{id: int, login: string, email: string, name: string, phone: string}}
      */
     public function me(): array
     {
         global $USER;
 
-        return ['user' => $this->getUserData((int) $USER->GetID())];
+        return ['user' => $this->users->getData((int) $USER->GetID())];
     }
 
     /**
@@ -87,24 +169,18 @@ final class AuthService
     }
 
     /**
-     * Отправить письмо для восстановления пароля.
+     * Отправить письмо с контрольным словом для восстановления пароля.
      *
      * Ядро отвечает одинаково и для существующего, и для неизвестного e-mail.
      *
      * @return array{sent: true}
      */
-    public function requestPasswordReset(ForgotPasswordRequest $data): array
+    public function requestPasswordReset(string $email, string $captchaWord = '', string|int $captchaSid = 0): array
     {
-        $result = CUser::SendPassword(
-            '',
-            trim($data->email),
-            SITE_ID,
-            $data->captchaWord,
-            $data->captchaSid,
-        );
+        $result = CUser::SendPassword('', trim($email), SITE_ID, $captchaWord, $captchaSid);
 
         if (is_array($result) && ($result['TYPE'] ?? 'OK') === 'ERROR') {
-            throw new SystemException($this->cleanMessage($result['MESSAGE'] ?? 'Не удалось отправить письмо'));
+            throw new SystemException(ErrorMessage::fromResult($result, 'Не удалось отправить письмо'));
         }
 
         return ['sent' => true];
@@ -119,7 +195,11 @@ final class AuthService
     {
         global $USER;
 
-        $user = $this->findUserByEmail($data->email, 'Пользователь с таким e-mail не найден');
+        $user = $this->users->findActiveByEmail($data->email);
+
+        if ($user === null) {
+            throw new SystemException('Пользователь с таким e-mail не найден');
+        }
 
         $result = $USER->ChangePassword(
             $user['LOGIN'],
@@ -132,62 +212,9 @@ final class AuthService
         );
 
         if (!is_array($result) || ($result['TYPE'] ?? 'OK') === 'ERROR') {
-            throw new SystemException($this->cleanMessage($result['MESSAGE'] ?? 'Не удалось изменить пароль'));
+            throw new SystemException(ErrorMessage::fromResult($result, 'Не удалось изменить пароль'));
         }
 
         return ['changed' => true];
-    }
-
-    /**
-     * @return array{ID: string|int, LOGIN: string, ACTIVE: string, EXTERNAL_AUTH_ID: string|null}
-     */
-    private function findUserByEmail(string $email, string $notFoundMessage = 'Неверный e-mail или пароль'): array
-    {
-        $email = trim($email);
-
-        $users = UserTable::getList([
-            'select' => ['ID', 'LOGIN', 'ACTIVE', 'EXTERNAL_AUTH_ID'],
-            'filter' => ['=EMAIL' => $email],
-            'order' => ['ID' => 'ASC'],
-        ])->fetchAll();
-
-        $users = array_values(array_filter(
-            $users,
-            static fn(array $user): bool => trim((string) $user['EXTERNAL_AUTH_ID']) === '',
-        ));
-
-        if (count($users) > 1) {
-            throw new SystemException('Этот e-mail привязан к нескольким аккаунтам, обратитесь к администратору');
-        }
-
-        if ($users === [] || $users[0]['ACTIVE'] !== 'Y') {
-            throw new SystemException($notFoundMessage);
-        }
-
-        return $users[0];
-    }
-
-    /**
-     * @return array{id: int, login: string, email: string, name: string}
-     */
-    private function getUserData(int $userId): array
-    {
-        $user = UserTable::getById($userId)->fetch();
-
-        if (!$user) {
-            throw new SystemException('Пользователь не найден');
-        }
-
-        return [
-            'id' => (int) $user['ID'],
-            'login' => (string) $user['LOGIN'],
-            'email' => (string) $user['EMAIL'],
-            'name' => trim($user['NAME'] . ' ' . $user['LAST_NAME']),
-        ];
-    }
-
-    private function cleanMessage(string $message): string
-    {
-        return trim(strip_tags($message));
     }
 }

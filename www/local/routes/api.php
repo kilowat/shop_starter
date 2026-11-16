@@ -17,9 +17,14 @@ return static function (RoutingConfigurator $routes): void {
     $routes->post('/api/basket/coupon/remove', [BasketController::class, 'removeCoupon']);
 
     $routes->post('/api/auth/login', [AuthController::class, 'login']);
+    $routes->post('/api/auth/register', [AuthController::class, 'register']);
+    $routes->post('/api/auth/register/confirm', [AuthController::class, 'confirmRegistration']);
+    $routes->post('/api/auth/register/resend', [AuthController::class, 'resendConfirmation']);
     $routes->get('/api/auth/captcha', [AuthController::class, 'captcha']);
     $routes->post('/api/auth/logout', [AuthController::class, 'logout']);
     $routes->get('/api/auth/me', [AuthController::class, 'me']);
+    $routes->post('/api/auth/profile/update', [AuthController::class, 'updateProfile']);
+    $routes->post('/api/auth/password/change', [AuthController::class, 'passwordChange']);
     $routes->post('/api/auth/password/forgot', [AuthController::class, 'forgotPassword']);
     $routes->post('/api/auth/password/reset', [AuthController::class, 'resetPassword']);
 };

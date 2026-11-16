@@ -18,6 +18,9 @@ final class AuthUser
 
     #[OA\Property(example: 'Иван Иванов')]
     public string $name;
+
+    #[OA\Property(example: '+79001234567')]
+    public string $phone;
 }
 
 #[OA\Schema]

@@ -28,6 +28,14 @@ final class AuthResultResponse
                     property: 'logged_out',
                     schema: new OA\Schema(type: 'boolean', example: true, description: 'Выход выполнен'),
                 ),
+                new OA\Property(
+                    property: 'channel',
+                    schema: new OA\Schema(type: 'string', example: 'phone', description: 'Канал доставки кода: email или phone'),
+                ),
+                new OA\Property(
+                    property: 'resend_after',
+                    schema: new OA\Schema(type: 'integer', example: 60, description: 'Через сколько секунд можно запросить код повторно'),
+                ),
             ],
         ),
     )]
