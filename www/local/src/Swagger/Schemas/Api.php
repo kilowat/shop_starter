@@ -13,11 +13,25 @@ final class Api
 #[OA\Schema]
 final class ApiError
 {
-    #[OA\Property(example: 'Некорректные параметры')]
+    #[OA\Property]
+    #[OA\Schema(type: 'string', example: 'Некорректные параметры')]
     public string $message;
 
-    #[OA\Property(example: 'INVALID_PARAMS')]
+    #[OA\Property]
+    #[OA\Schema(type: 'string', example: 'INVALID_PARAMS')]
     public string $code;
+
+    #[OA\Property]
+    #[OA\Schema(
+        type: 'object',
+        nullable: true,
+        description: 'Дополнительные данные ошибки; например, параметры капчи для code = captcha_required',
+        properties: [
+            new OA\Property(property: 'captcha_sid', schema: new OA\Schema(type: 'string', example: '0a1b2c3d4e5f')),
+            new OA\Property(property: 'captcha_url', schema: new OA\Schema(type: 'string', example: '/bitrix/tools/captcha.php?captcha_sid=0a1b2c3d4e5f')),
+        ],
+    )]
+    public ?array $customData;
 }
 
 #[OA\Response(

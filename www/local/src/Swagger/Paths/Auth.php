@@ -41,11 +41,11 @@ final class Auth
                             ),
                             new OA\Property(
                                 property: 'captcha_word',
-                                schema: new OA\Schema(type: 'string', description: 'Слово капчи; обязательно после 3 неудачных попыток входа'),
+                                schema: new OA\Schema(type: 'string', example: 'a1b2c', description: 'Код с картинки; обязателен после 3 неудачных попыток входа'),
                             ),
                             new OA\Property(
                                 property: 'captcha_sid',
-                                schema: new OA\Schema(type: 'integer', description: 'ID капчи; приходит в errors[].customData ответа с кодом captcha_required'),
+                                schema: new OA\Schema(type: 'string', example: '0a1b2c3d4e5f', description: 'ID капчи из GET /api/auth/captcha или errors[].customData ответа с кодом captcha_required'),
                             ),
                         ],
                     ),
@@ -165,11 +165,11 @@ final class Auth
                             ),
                             new OA\Property(
                                 property: 'captcha_word',
-                                schema: new OA\Schema(type: 'string', description: 'Слово капчи, если ядро её затребовало'),
+                                schema: new OA\Schema(type: 'string', example: 'a1b2c', description: 'Код с картинки, если ядро её затребовало'),
                             ),
                             new OA\Property(
                                 property: 'captcha_sid',
-                                schema: new OA\Schema(type: 'integer', description: 'ID капчи'),
+                                schema: new OA\Schema(type: 'string', example: '0a1b2c3d4e5f', description: 'ID капчи из GET /api/auth/captcha'),
                             ),
                         ],
                     ),
@@ -228,11 +228,11 @@ final class Auth
                             ),
                             new OA\Property(
                                 property: 'captcha_word',
-                                schema: new OA\Schema(type: 'string', description: 'Слово капчи, если ядро её затребовало'),
+                                schema: new OA\Schema(type: 'string', example: 'a1b2c', description: 'Код с картинки, если ядро её затребовало'),
                             ),
                             new OA\Property(
                                 property: 'captcha_sid',
-                                schema: new OA\Schema(type: 'integer', description: 'ID капчи'),
+                                schema: new OA\Schema(type: 'string', example: '0a1b2c3d4e5f', description: 'ID капчи из GET /api/auth/captcha'),
                             ),
                         ],
                     ),
