@@ -43,7 +43,4 @@ final class RegistrationConfirmation
 {
     #[OA\Property(example: 'ivanov@example.com')]
     public string $email;
-
-    #[OA\Property(property: 'resend_after', example: 60, description: 'Через сколько секунд можно запросить код повторно')]
-    public int $resendAfter;
 }

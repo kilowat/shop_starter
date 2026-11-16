@@ -3,6 +3,8 @@
 use Bitrix\Main\Routing\RoutingConfigurator;
 use Controllers\BasketController;
 use Controllers\AuthController;
+use Controllers\ProfileController;
+use Controllers\CaptchaController;
 
 return static function (RoutingConfigurator $routes): void {
 
@@ -20,11 +22,14 @@ return static function (RoutingConfigurator $routes): void {
     $routes->post('/api/auth/register', [AuthController::class, 'register']);
     $routes->post('/api/auth/register/confirm', [AuthController::class, 'confirmRegistration']);
     $routes->post('/api/auth/register/resend', [AuthController::class, 'resendConfirmation']);
-    $routes->get('/api/auth/captcha', [AuthController::class, 'captcha']);
     $routes->post('/api/auth/logout', [AuthController::class, 'logout']);
     $routes->get('/api/auth/me', [AuthController::class, 'me']);
-    $routes->post('/api/auth/profile/update', [AuthController::class, 'updateProfile']);
-    $routes->post('/api/auth/password/change', [AuthController::class, 'passwordChange']);
     $routes->post('/api/auth/password/forgot', [AuthController::class, 'forgotPassword']);
     $routes->post('/api/auth/password/reset', [AuthController::class, 'resetPassword']);
+
+    $routes->get('/api/captcha', [CaptchaController::class, 'captcha']);
+
+    $routes->post('/api/profile/update', [ProfileController::class, 'update']);
+    $routes->post('/api/profile/password/change', [ProfileController::class, 'passwordChange']);
+    $routes->post('/api/profile/delete', [ProfileController::class, 'delete']);
 };

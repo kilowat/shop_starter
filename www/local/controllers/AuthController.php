@@ -2,13 +2,12 @@
 
 namespace Controllers;
 
-use App\Auth\CaptchaActionFilter;
 use App\Auth\AuthService;
-use App\Auth\LoginRequest;
-use App\Auth\Registration\ConfirmRegistrationRequest;
-use App\Auth\Registration\RegisterRequest;
-use App\Auth\ResetPasswordRequest;
-
+use App\Auth\Dto\ConfirmRegistrationRequest;
+use App\Auth\Dto\LoginRequest;
+use App\Auth\Dto\RegisterRequest;
+use App\Auth\Dto\ResetPasswordRequest;
+use App\Helper\Captcha\CaptchaActionFilter;
 use Bitrix\Main\Engine\ActionFilter;
 use Bitrix\Main\Engine\Controller;
 use Bitrix\Main\Validation\Engine\AutoWire\ValidationParameter;
@@ -16,14 +15,10 @@ use Bitrix\Main\Validation\Engine\AutoWire\ValidationParameter;
 final class AuthController extends Controller
 {
     private AuthService $auth;
-    private CaptchaActionFilter $loginCaptcha;
-    private CaptchaActionFilter $confirmCaptcha;
 
     protected function init(): void
     {
         $this->auth = new AuthService();
-        $this->loginCaptcha = new CaptchaActionFilter();
-        $this->confirmCaptcha = new CaptchaActionFilter(attemptsLimit: 5);
 
         parent::init();
     }
@@ -38,23 +33,12 @@ final class AuthController extends Controller
         return [
             'login' => [
                 'prefilters' => [
-                    $this->loginCaptcha,
-                ],
-                'postfilters' => [
-                    $this->loginCaptcha,
+                    new CaptchaActionFilter(),
                 ],
             ],
             'confirmRegistration' => [
                 'prefilters' => [
-                    $this->confirmCaptcha,
-                ],
-                'postfilters' => [
-                    $this->confirmCaptcha,
-                ],
-            ],
-            'resendConfirmation' => [
-                'postfilters' => [
-                    $this->confirmCaptcha,
+                    new CaptchaActionFilter(),
                 ],
             ],
             'logout' => [
@@ -68,20 +52,6 @@ final class AuthController extends Controller
                 'prefilters' => [
                     new ActionFilter\Authentication(),
                     new ActionFilter\HttpMethod([ActionFilter\HttpMethod::METHOD_GET]),
-                ],
-            ],
-            'updateProfile' => [
-                'prefilters' => [
-                    new ActionFilter\Authentication(),
-                    new ActionFilter\HttpMethod([ActionFilter\HttpMethod::METHOD_POST]),
-                    new ActionFilter\Csrf(),
-                ],
-            ],
-            'passwordChange' => [
-                'prefilters' => [
-                    new ActionFilter\Authentication(),
-                    new ActionFilter\HttpMethod([ActionFilter\HttpMethod::METHOD_POST]),
-                    new ActionFilter\Csrf(),
                 ],
             ],
         ];
@@ -143,14 +113,6 @@ final class AuthController extends Controller
     }
 
     /**
-     * Новая капча для формы входа.
-     */
-    public function captchaAction(): array
-    {
-        return $this->auth->getCaptcha();
-    }
-
-    /**
      * Выход.
      */
     public function logoutAction(): array
@@ -164,22 +126,6 @@ final class AuthController extends Controller
     public function meAction(): array
     {
         return $this->auth->me();
-    }
-
-    /**
-     * Обновить имя и/или телефон текущего пользователя.
-     */
-    public function updateProfileAction(string $name = '', string $phone = ''): array
-    {
-        return $this->auth->updateProfile($name, $phone);
-    }
-
-    /**
-     * Смена пароля: письмо с контрольным словом, далее password/reset.
-     */
-    public function passwordChangeAction(): array
-    {
-        return $this->auth->requestPasswordChange();
     }
 
     /**

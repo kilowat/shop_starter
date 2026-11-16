@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Auth\Registration;
+namespace App\Auth\Dto;
 
 use App\Helper\Http\Mapper\RequestMethod;
 use App\Helper\Http\Mapper\RequestMapper;

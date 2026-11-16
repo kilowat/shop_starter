@@ -42,7 +42,7 @@ final class Auth
                             ),
                             new OA\Property(
                                 property: 'captcha_word',
-                                schema: new OA\Schema(type: 'string', example: 'a1b2c', description: 'Код с картинки; обязателен после 3 неудачных попыток входа'),
+                                schema: new OA\Schema(type: 'string', example: 'a1b2c', description: 'Код с картинки; капча обязательна при каждом входе'),
                             ),
                             new OA\Property(
                                 property: 'captcha_sid',
@@ -61,7 +61,7 @@ final class Auth
             ),
             new OA\Response(
                 response: 400,
-                description: 'Ошибка запроса. При превышении лимита попыток — errors[].code = captcha_required и errors[].customData{captcha_sid, captcha_url}',
+                description: 'Ошибка запроса. Без валидной капчи — errors[].code = captcha_required и errors[].customData{captcha_sid, captcha_url}',
                 content: new OA\Schema(ref: ApiError::class),
             ),
         ],
@@ -101,7 +101,7 @@ final class Auth
                             ),
                             new OA\Property(
                                 property: 'remember',
-                                schema: new OA\Schema(type: 'boolean', default: false, description: 'Запомнить меня после подтверждения'),
+                                schema: new OA\Schema(type: 'boolean', default: false, description: 'Запомнить меня (если подтверждение по e-mail не требуется)'),
                             ),
                             new OA\Property(
                                 property: 'captcha_word',
@@ -140,7 +140,7 @@ final class Auth
         path: '/api/auth/register/confirm',
         operationId: 'authRegisterConfirm',
         summary: 'Подтвердить регистрацию',
-        description: 'Проверяет код из письма, активирует пользователя и авторизует его.',
+        description: 'Проверяет код из письма, активирует пользователя и авторизует его. Капча обязательна.',
         requestBody: new OA\RequestBody(
             required: true,
             content: [
@@ -162,6 +162,14 @@ final class Auth
                                 property: 'remember',
                                 schema: new OA\Schema(type: 'boolean', default: false, description: 'Запомнить меня'),
                             ),
+                            new OA\Property(
+                                property: 'captcha_word',
+                                schema: new OA\Schema(type: 'string', example: 'a1b2c', description: 'Код с картинки; капча обязательна при каждом подтверждении'),
+                            ),
+                            new OA\Property(
+                                property: 'captcha_sid',
+                                schema: new OA\Schema(type: 'string', example: '0a1b2c3d4e5f', description: 'ID капчи из GET /api/auth/captcha или errors[].customData ответа с кодом captcha_required'),
+                            ),
                         ],
                     ),
                 ),
@@ -175,7 +183,7 @@ final class Auth
             ),
             new OA\Response(
                 response: 400,
-                description: 'Ошибка запроса',
+                description: 'Ошибка запроса. Без валидной капчи — errors[].code = captcha_required и errors[].customData{captcha_sid, captcha_url}',
                 content: new OA\Schema(ref: ApiError::class),
             ),
         ],
@@ -191,7 +199,7 @@ final class Auth
         path: '/api/auth/register/resend',
         operationId: 'authRegisterResend',
         summary: 'Повторить код подтверждения',
-        description: 'Повторно отправляет код подтверждения. Повторная отправка — не чаще раза в минуту.',
+        description: 'Повторно отправляет код подтверждения на e-mail неподтверждённого пользователя. Ответ одинаков для существующего и неизвестного e-mail.',
         requestBody: new OA\RequestBody(
             required: true,
             content: [
@@ -297,77 +305,6 @@ final class Auth
         ],
     )]
     public function me(): void
-    {
-    }
-
-
-    // POST /api/auth/profile/update
-
-    #[OA\Operation\Post(
-        path: '/api/auth/profile/update',
-        operationId: 'authProfileUpdate',
-        summary: 'Обновить профиль',
-        description: 'Обновляет имя и/или телефон текущего пользователя. Требуется авторизация.',
-        requestBody: new OA\RequestBody(
-            required: true,
-            content: [
-                new OA\MediaType(
-                    mediaType: 'application/json',
-                    schema: new OA\Schema(
-                        type: 'object',
-                        properties: [
-                            new OA\Property(
-                                property: 'name',
-                                schema: new OA\Schema(type: 'string', example: 'Иван Иванов'),
-                            ),
-                            new OA\Property(
-                                property: 'phone',
-                                schema: new OA\Schema(type: 'string', example: '+79001234567'),
-                            ),
-                        ],
-                    ),
-                ),
-            ],
-        ),
-        responses: [
-            new OA\Response(
-                response: 200,
-                description: 'Успешный ответ',
-                content: new OA\Schema(ref: AuthResponse::class),
-            ),
-            new OA\Response(
-                response: 400,
-                description: 'Ошибка запроса',
-                content: new OA\Schema(ref: ApiError::class),
-            ),
-        ],
-    )]
-    public function updateProfile(): void
-    {
-    }
-
-
-    // POST /api/auth/password/change
-
-    #[OA\Operation\Post(
-        path: '/api/auth/password/change',
-        operationId: 'authPasswordChange',
-        summary: 'Запросить смену пароля',
-        description: 'Отправляет письмо с контрольным словом на e-mail текущего пользователя. Новый пароль устанавливается через POST /api/auth/password/reset. Требуется авторизация.',
-        responses: [
-            new OA\Response(
-                response: 200,
-                description: 'Успешный ответ',
-                content: new OA\Schema(ref: AuthResultResponse::class),
-            ),
-            new OA\Response(
-                response: 400,
-                description: 'Ошибка запроса',
-                content: new OA\Schema(ref: ApiError::class),
-            ),
-        ],
-    )]
-    public function passwordChange(): void
     {
     }
 

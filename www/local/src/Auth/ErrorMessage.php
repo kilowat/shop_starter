@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Auth\Internal;
+namespace App\Auth;
 
 /**
  * Сообщения ядра (CUser и т.п.) приходят с HTML — приводим их к plain-text для API.

@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace App\Auth;
+namespace App\Auth\Dto;
 
 use App\Helper\Http\Mapper\Key;
 use App\Helper\Http\Mapper\RequestMethod;
 use App\Helper\Http\Mapper\RequestMapper;
 use App\Helper\Http\Validator\RequiredOn;
 
-final readonly class LoginRequest
+final readonly class ResetPasswordRequest
 {
     use RequestMapper;
 
@@ -20,7 +20,11 @@ final readonly class LoginRequest
         #[RequiredOn([RequestMethod::Post])]
         public string $password = '',
 
-        public bool $remember = false,
+        #[RequiredOn([RequestMethod::Post])]
+        public string $checkword = '',
+
+        #[Key('password_confirm')]
+        public string $passwordConfirm = '',
 
         #[Key('captcha_word')]
         public string $captchaWord = '',

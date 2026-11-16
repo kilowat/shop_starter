@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace App\Auth\Registration;
+namespace App\Auth\Dto;
 
 use App\Helper\Http\Mapper\Key;
 use App\Helper\Http\Mapper\RequestMethod;
 use App\Helper\Http\Mapper\RequestMapper;
 use App\Helper\Http\Validator\RequiredOn;
 
-final readonly class RegisterRequest
+final readonly class LoginRequest
 {
     use RequestMapper;
 
@@ -17,9 +17,8 @@ final readonly class RegisterRequest
         #[RequiredOn([RequestMethod::Post])]
         public string $email = '',
 
-        public string $name = '',
-
-        public string $phone = '',
+        #[RequiredOn([RequestMethod::Post])]
+        public string $password = '',
 
         public bool $remember = false,
 
