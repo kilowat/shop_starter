@@ -2,7 +2,7 @@
 
 namespace Controllers;
 
-use App\Auth\ActionFilter\CaptchaActionFilter;
+use App\Auth\CaptchaActionFilter;
 use App\Auth\AuthService;
 use App\Auth\ForgotPasswordRequest;
 use App\Auth\LoginRequest;

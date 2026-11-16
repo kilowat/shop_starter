@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Auth\ActionFilter;
+namespace App\Auth;
 
 use Bitrix\Main\Engine\ActionFilter\Base;
 use Bitrix\Main\Error;
