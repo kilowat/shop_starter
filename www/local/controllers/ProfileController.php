@@ -37,7 +37,6 @@ final class ProfileController extends Controller
 
         return [
             'update' => ['prefilters' => $protected],
-            'passwordChange' => ['prefilters' => $protected],
             'delete' => ['prefilters' => $protected],
         ];
     }
@@ -57,25 +56,14 @@ final class ProfileController extends Controller
      */
     public function updateAction(UpdateProfileRequest $request): void
     {
-        $this->profile->updateProfile(
-            name: $request->name,
-            phone: $request->phone,
-        );
+        //todo
+        $this->profile->update();
     }
-
-    /**
-     * Смена пароля: письмо с контрольным словом.
-     */
-    public function passwordChangeAction(): void
-    {
-        $this->profile->requestPasswordChange();
-    }
-
     /**
      * Мягкое удаление профиля: деактивация и выход.
      */
     public function deleteAction(): void
     {
-        $this->profile->deleteProfile();
+        $this->profile->deactive();
     }
 }

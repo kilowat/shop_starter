@@ -36,8 +36,6 @@ final class AuthController extends Controller
 
     public function configureActions(): array
     {
-        $captcha = [new CaptchaActionFilter()];
-
         return [
             'logout' => [
                 'prefilters' => [

@@ -29,6 +29,5 @@ return static function (RoutingConfigurator $routes): void {
     $routes->get('/api/captcha', [CaptchaController::class, 'captcha']);
 
     $routes->post('/api/profile/update', [ProfileController::class, 'update']);
-    $routes->post('/api/profile/password/change', [ProfileController::class, 'passwordChange']);
     $routes->post('/api/profile/delete', [ProfileController::class, 'delete']);
 };
