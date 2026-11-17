@@ -20,8 +20,7 @@ return static function (RoutingConfigurator $routes): void {
 
     $routes->post('/api/auth/login', [AuthController::class, 'login']);
     $routes->post('/api/auth/register', [AuthController::class, 'register']);
-    $routes->post('/api/auth/register/confirm', [AuthController::class, 'confirmRegistration']);
-    $routes->post('/api/auth/register/resend', [AuthController::class, 'resendConfirmation']);
+    $routes->post('/api/auth/confirm', [AuthController::class, 'confirmRegistration']);
     $routes->post('/api/auth/logout', [AuthController::class, 'logout']);
     $routes->get('/api/auth/me', [AuthController::class, 'me']);
     $routes->post('/api/auth/password/forgot', [AuthController::class, 'forgotPassword']);

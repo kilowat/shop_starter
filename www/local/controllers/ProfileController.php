@@ -8,6 +8,9 @@ use Bitrix\Main\Engine\ActionFilter;
 use Bitrix\Main\Engine\Controller;
 use Bitrix\Main\Validation\Engine\AutoWire\ValidationParameter;
 
+/**
+ * Профиль текущего пользователя.
+ */
 final class ProfileController extends Controller
 {
     private ProfileService $profile;
@@ -54,11 +57,14 @@ final class ProfileController extends Controller
      */
     public function updateAction(UpdateProfileRequest $request): void
     {
-        $this->profile->updateProfile($request);
+        $this->profile->updateProfile(
+            name: $request->name,
+            phone: $request->phone,
+        );
     }
 
     /**
-     * Смена пароля: письмо с контрольным словом, далее auth/password/reset.
+     * Смена пароля: письмо с контрольным словом.
      */
     public function passwordChangeAction(): void
     {

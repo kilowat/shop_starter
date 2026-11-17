@@ -22,11 +22,3 @@ final class AuthUser
     #[OA\Property(example: '+79001234567')]
     public string $phone;
 }
-
-#[OA\Schema]
-final class AuthData
-{
-    #[OA\Property]
-    #[OA\Schema(ref: AuthUser::class)]
-    public AuthUser $user;
-}

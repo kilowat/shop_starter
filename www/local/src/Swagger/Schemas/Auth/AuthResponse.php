@@ -12,8 +12,8 @@ final class AuthResponse
     public string $status;
 
     #[OA\Property]
-    #[OA\Schema(ref: AuthData::class)]
-    public AuthData $data;
+    #[OA\Schema(ref: AuthUser::class)]
+    public AuthUser $data;
 
     #[OA\Property]
     #[OA\Schema(

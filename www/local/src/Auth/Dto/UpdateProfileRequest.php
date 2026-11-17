@@ -15,10 +15,8 @@ final readonly class UpdateProfileRequest
 
     public function __construct(
         #[Sanitize(Filter::StripTags, Filter::Trim)]
-        #[Field('NAME')]
         public ?string $name,
 
-        #[Field('PERSONAL_PHONE')]
         public ?string $phone,
     ) {
     }

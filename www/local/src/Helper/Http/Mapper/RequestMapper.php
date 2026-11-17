@@ -127,8 +127,8 @@ trait RequestMapper
     }
 
     /**
-     * Применяет фильтры из #[Sanitize] к полям, которые есть в DTO.
-     * Без атрибута действует Trim. Filter::Raw отключает обработку.
+     * Применяет фильтры из #[Sanitize] только к тем полям DTO, где атрибут указан.
+     * Без атрибута значение не трогается. Filter::Raw тоже пропускает обработку.
      *
      * @param array<string, mixed> $data
      * @return array<string, mixed>
@@ -142,17 +142,19 @@ trait RequestMapper
                 continue;
             }
 
+            $attributes = $property->getAttributes(Sanitize::class);
+
+            if ($attributes === []) {
+                continue;
+            }
+
             $key = self::getPropertyKey($property);
 
             if (!array_key_exists($key, $data)) {
                 continue;
             }
 
-            $attributes = $property->getAttributes(Sanitize::class);
-
-            $filters = $attributes === []
-                ? [Filter::Trim]
-                : $attributes[0]->newInstance()->filters;
+            $filters = $attributes[0]->newInstance()->filters;
 
             if (in_array(Filter::Raw, $filters, true)) {
                 continue;
