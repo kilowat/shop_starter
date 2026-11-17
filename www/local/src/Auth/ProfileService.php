@@ -22,19 +22,14 @@ final class ProfileService
     }
 
     /**
-     * Создать активного пользователя со случайным паролем и сразу авторизовать
-     * (например, заказ без регистрации). Возвращает данные, включая пароль,
-     * для обработки на событиях и письма со сменой пароля.
      *
      * @param array{email: string, name?: string, phone?: string} $data
-     * @return array{id: int, login: string, email: string, name: string, phone: string, password: string}
      */
-    public function create(array $data): array
+    public function create(array $data): int
     {
         global $USER;
 
-        $email = $this->users->normalizeEmail((string) ($data['email'] ?? ''));
-        $this->users->assertEmailAvailable($email);
+        $email = $data['email'];
 
         $name = trim((string) ($data['name'] ?? ''));
         $name = $name !== '' ? $name : $this->users->generateDisplayName();
@@ -70,22 +65,14 @@ final class ProfileService
             true,
         );
 
-        return [
-            'id' => $userId,
-            'login' => $email,
-            'email' => $email,
-            'name' => $name,
-            'phone' => $phone,
-            'password' => $password,
-        ];
+        return $userId;
     }
 
     /**
      * Обновить имя и/или телефон текущего пользователя.
      *
-     * @return array{user: array{id: int, login: string, email: string, name: string, phone: string}}
      */
-    public function updateProfile(string $name = '', string $phone = ''): array
+    public function updateProfile(string $name = '', string $phone = ''): void
     {
         global $USER;
 
@@ -104,40 +91,37 @@ final class ProfileService
             $this->users->update($userId, $fields);
         }
 
-        return ['user' => $this->users->getData($userId)];
     }
 
     /**
      * Смена пароля: письмо с контрольным словом на e-mail текущего пользователя,
      * затем новый пароль устанавливается через Auth::resetPassword.
      *
-     * @return array{sent: true}
      */
-    public function requestPasswordChange(): array
+    public function requestPasswordChange(): void
     {
         global $USER;
 
         $result = CUser::SendPassword('', trim((string) $USER->GetEmail()), SITE_ID);
 
         if (is_array($result) && ($result['TYPE'] ?? 'OK') === 'ERROR') {
-            throw new SystemException(ErrorMessage::fromResult($result, 'Не удалось отправить письмо'));
+            throw new SystemException($result['MESSAGE']);
         }
 
-        return ['sent' => true];
+        return;
     }
 
     /**
      * Мягкое удаление профиля: деактивация текущего пользователя и выход.
      *
-     * @return array{deleted: true}
      */
-    public function deleteProfile(): array
+    public function deleteProfile(): void
     {
         global $USER;
 
-        $this->users->delete((int) $USER->GetID());
+        $this->users->deactive((int) $USER->GetID());
         $USER->Logout();
 
-        return ['deleted' => true];
+        return;
     }
 }

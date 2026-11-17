@@ -5,29 +5,24 @@ declare(strict_types=1);
 namespace App\Auth\Dto;
 
 use App\Helper\Http\Mapper\Key;
-use App\Helper\Http\Mapper\RequestMethod;
 use App\Helper\Http\Mapper\RequestMapper;
-use App\Helper\Http\Validator\RequiredOn;
 
+use Bitrix\Main\Validation\Rule\Email;
+
+use Bitrix\Main\Validation\Rule\RegExp;
 final readonly class RegisterRequest
 {
     use RequestMapper;
 
     public function __construct(
-        #[RequiredOn([RequestMethod::Post])]
+        #[Email()]
         public string $email = '',
 
-        public string $name = '',
+        #[RegExp()]
+        public string $password,
 
-        public string $phone = '',
-
-        public bool $remember = false,
-
-        #[Key('captcha_word')]
-        public string $captchaWord = '',
-
-        #[Key('captcha_sid')]
-        public string|int $captchaSid = 0,
+        #[Key('confirm_password')]
+        public string $confirmPassword,
     ) {
     }
 }

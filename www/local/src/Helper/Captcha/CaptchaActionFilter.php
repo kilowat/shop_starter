@@ -39,10 +39,12 @@ final class CaptchaActionFilter extends Base
             ? $request->getJsonList()->toArray()
             : $request->getPostList()->toArray();
 
-        if ($this->captcha->check(
-            (string) ($data['captcha_word'] ?? ''),
-            (string) ($data['captcha_sid'] ?? ''),
-        )) {
+        if (
+            $this->captcha->check(
+                (string) ($data['captcha_word'] ?? ''),
+                (string) ($data['captcha_sid'] ?? ''),
+            )
+        ) {
             return null;
         }
 

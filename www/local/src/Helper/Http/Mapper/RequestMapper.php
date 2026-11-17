@@ -153,18 +153,81 @@ trait RequestMapper
 
     /**
      * Приоритет (от низкого к высокому): query < body (json или post) < files.
+     * Query и body проходят санитайзинг по #[Sanitize], файлы - нет.
      */
     private static function getRequestData(HttpRequest $request): array
     {
-        $query = $request->getQueryList()->toArray();
+        $query = self::sanitize($request->getQueryList()->toArray());
 
-        $body = $request->isJson()
+        $body = self::sanitize(
+            $request->isJson()
             ? $request->getJsonList()->toArray()
-            : $request->getPostList()->toArray();
+            : $request->getPostList()->toArray()
+        );
 
         $files = self::normalizeFiles($request->getFileList()->toArray());
 
         return array_replace($query, $body, $files);
+    }
+
+    /**
+     * Применяет фильтры из #[Sanitize] к полям, которые есть в DTO.
+     * Без атрибута действует Trim. Filter::Raw отключает обработку.
+     *
+     * @param array<string, mixed> $data
+     * @return array<string, mixed>
+     */
+    private static function sanitize(array $data): array
+    {
+        $reflection = new ReflectionClass(static::class);
+
+        foreach ($reflection->getProperties(ReflectionProperty::IS_PUBLIC) as $property) {
+            if ($property->isStatic()) {
+                continue;
+            }
+
+            $key = self::getPropertyKey($property);
+
+            if (!array_key_exists($key, $data)) {
+                continue;
+            }
+
+            $attributes = $property->getAttributes(Sanitize::class);
+
+            $filters = $attributes === []
+                ? [Filter::Trim]
+                : $attributes[0]->newInstance()->filters;
+
+            if (in_array(Filter::Raw, $filters, true)) {
+                continue;
+            }
+
+            $data[$key] = self::applyFilters($data[$key], $filters);
+        }
+
+        return $data;
+    }
+
+    /**
+     * Строки обрабатываются фильтрами, массивы - рекурсивно, остальное не трогаем.
+     *
+     * @param Filter[] $filters
+     */
+    private static function applyFilters(mixed $value, array $filters): mixed
+    {
+        if (is_string($value)) {
+            foreach ($filters as $filter) {
+                $value = $filter->apply($value);
+            }
+
+            return $value;
+        }
+
+        if (is_array($value)) {
+            return array_map(static fn($item) => self::applyFilters($item, $filters), $value);
+        }
+
+        return $value;
     }
 
     /**

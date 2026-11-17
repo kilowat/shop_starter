@@ -4,29 +4,24 @@ declare(strict_types=1);
 
 namespace App\Auth\Dto;
 
-use App\Helper\Http\Mapper\Key;
-use App\Helper\Http\Mapper\RequestMethod;
 use App\Helper\Http\Mapper\RequestMapper;
-use App\Helper\Http\Validator\RequiredOn;
+use Bitrix\Main\Validation\Rule\Email;
+use Bitrix\Main\Validation\Rule\Min;
+
+
 
 final readonly class LoginRequest
 {
     use RequestMapper;
 
     public function __construct(
-        #[RequiredOn([RequestMethod::Post])]
-        public string $email = '',
+        #[Email()]
+        public string $email,
 
-        #[RequiredOn([RequestMethod::Post])]
-        public string $password = '',
+        #[Min(8)]
+        public string $password,
 
         public bool $remember = false,
-
-        #[Key('captcha_word')]
-        public string $captchaWord = '',
-
-        #[Key('captcha_sid')]
-        public string|int $captchaSid = 0,
     ) {
     }
 }

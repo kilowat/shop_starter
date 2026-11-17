@@ -91,7 +91,7 @@ final class UserService
         $userId = (int) $USER->Add($fields);
 
         if ($userId <= 0) {
-            throw new SystemException(ErrorMessage::clean($USER->LAST_ERROR ?: 'Не удалось создать пользователя'));
+            throw new SystemException($USER->LAST_ERROR ?: 'Не удалось создать пользователя'));
         }
 
         return $userId;
@@ -107,34 +107,16 @@ final class UserService
         global $USER;
 
         if ($USER->Update($userId, $fields) === false) {
-            throw new SystemException(ErrorMessage::clean($USER->LAST_ERROR ?: 'Не удалось обновить пользователя'));
+            throw new SystemException($USER->LAST_ERROR ?: 'Не удалось обновить пользователя'));
         }
     }
 
     /**
      * Мягкое удаление: деактивация (ACTIVE='N'), запись физически не удаляется.
      */
-    public function delete(int $userId): void
+    public function deactive(int $userId): void
     {
         $this->update($userId, ['ACTIVE' => 'N']);
-    }
-
-    public function normalizeEmail(string $email): string
-    {
-        $email = trim($email);
-
-        if (!check_email($email)) {
-            throw new SystemException('Укажите корректный e-mail');
-        }
-
-        return $email;
-    }
-
-    public function assertEmailAvailable(string $email): void
-    {
-        if ($this->emailExists($email)) {
-            throw new SystemException('Пользователь с таким e-mail уже зарегистрирован');
-        }
     }
 
     public function generateDisplayName(): string
