@@ -2,6 +2,7 @@
 
 namespace Controllers;
 
+use App\Auth\Dto\ProfilePayload;
 use App\Auth\Dto\UpdateProfileRequest;
 use App\Auth\ProfileService;
 use Bitrix\Main\Engine\ActionFilter;
@@ -45,8 +46,8 @@ final class ProfileController extends Controller
     {
         return [
             new ValidationParameter(
-                UpdateProfileRequest::class,
-                fn() => UpdateProfileRequest::fromRequest($this->getRequest()),
+                ProfilePayload::class,
+                fn() => ProfilePayload::fromRequest($this->getRequest()),
             ),
         ];
     }
@@ -54,10 +55,9 @@ final class ProfileController extends Controller
     /**
      * Обновить имя и/или телефон текущего пользователя.
      */
-    public function updateAction(UpdateProfileRequest $request): void
+    public function updateAction(ProfilePayload $payload): void
     {
-        //todo
-        $this->profile->update();
+        $this->profile->update($payload);
     }
     /**
      * Мягкое удаление профиля: деактивация и выход.

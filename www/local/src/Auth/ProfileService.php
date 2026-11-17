@@ -4,17 +4,18 @@ declare(strict_types=1);
 
 namespace App\Auth;
 
+use App\Auth\Dto\ProfilePayload;
 use Bitrix\Main\AccessDeniedException;
 use Bitrix\Main\Engine\CurrentUser;
 use Bitrix\Main\SystemException;
 
 class ProfileService
 {
-    public function update()
+    public function update(ProfilePayload $payload)
     {
         global $USER;
         // to do
-        $USER->Update($USER->GetID(), []);
+        $USER->Update($USER->GetID(), $payload->toFields());
     }
 
     public function get(): ?array
