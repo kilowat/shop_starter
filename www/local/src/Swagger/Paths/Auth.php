@@ -6,9 +6,8 @@ use OpenApi\Spec as OA;
 
 use App\Swagger\Schemas\ApiError;
 use App\Swagger\Schemas\Auth\AuthResponse;
-use App\Swagger\Schemas\Auth\AuthResultResponse;
 use App\Swagger\Schemas\Auth\CaptchaResponse;
-use App\Swagger\Schemas\Auth\RegistrationResponse;
+use App\Swagger\Schemas\SuccessResponse;
 
 #[OA\Tag(name: 'Auth', description: 'Авторизация и восстановление пароля')]
 final class Auth
@@ -38,7 +37,7 @@ final class Auth
                             ),
                             new OA\Property(
                                 property: 'remember',
-                                schema: new OA\Schema(type: 'boolean', default: false, description: 'Запомнить меня'),
+                                schema: new OA\Schema(type: 'boolean', default: true, description: 'Запомнить меня'),
                             ),
                             new OA\Property(
                                 property: 'captcha_word',
@@ -57,7 +56,7 @@ final class Auth
             new OA\Response(
                 response: 200,
                 description: 'Успешный ответ',
-                content: new OA\Schema(ref: AuthResponse::class),
+                content: new OA\Schema(ref: SuccessResponse::class),
             ),
             new OA\Response(
                 response: 400,
@@ -76,8 +75,8 @@ final class Auth
     #[OA\Operation\Post(
         path: '/api/auth/register',
         operationId: 'authRegister',
-        summary: 'Регистрация по e-mail',
-        description: 'Пароль генерируется случайно. Имя и телефон опциональны; без имени присваивается «Пользователь XXXXX». Подтверждение кодом из письма — только если включена опция ядра new_user_registration_email_confirmation; иначе пользователь сразу авторизуется.',
+        summary: 'Регистрация по e-mail и паролю',
+        description: 'Имя присваивается автоматически («Пользователь XXXXX»). Подтверждение кодом из письма — только если включена опция ядра new_user_registration_email_confirmation; иначе пользователь сразу авторизуется.',
         requestBody: new OA\RequestBody(
             required: true,
             content: [
@@ -85,31 +84,27 @@ final class Auth
                     mediaType: 'application/json',
                     schema: new OA\Schema(
                         type: 'object',
-                        required: ['email'],
+                        required: ['email', 'password', 'confirm_password'],
                         properties: [
                             new OA\Property(
                                 property: 'email',
                                 schema: new OA\Schema(type: 'string', format: 'email', example: 'ivanov@example.com'),
                             ),
                             new OA\Property(
-                                property: 'name',
-                                schema: new OA\Schema(type: 'string', example: 'Иван Иванов', description: 'Необязательно; по умолчанию «Пользователь XXXXX»'),
+                                property: 'password',
+                                schema: new OA\Schema(type: 'string', minLength: 8, example: 'P@ssw0rd'),
                             ),
                             new OA\Property(
-                                property: 'phone',
-                                schema: new OA\Schema(type: 'string', example: '+79001234567', description: 'Необязательно'),
-                            ),
-                            new OA\Property(
-                                property: 'remember',
-                                schema: new OA\Schema(type: 'boolean', default: false, description: 'Запомнить меня (если подтверждение по e-mail не требуется)'),
+                                property: 'confirm_password',
+                                schema: new OA\Schema(type: 'string', example: 'P@ssw0rd', description: 'Повтор пароля'),
                             ),
                             new OA\Property(
                                 property: 'captcha_word',
-                                schema: new OA\Schema(type: 'string', example: 'a1b2c', description: 'Код с картинки, если включена опция captcha_registration'),
+                                schema: new OA\Schema(type: 'string', example: 'a1b2c', description: 'Код с картинки; капча обязательна при регистрации'),
                             ),
                             new OA\Property(
                                 property: 'captcha_sid',
-                                schema: new OA\Schema(type: 'string', example: '0a1b2c3d4e5f', description: 'ID капчи из GET /api/auth/captcha'),
+                                schema: new OA\Schema(type: 'string', example: '0a1b2c3d4e5f', description: 'ID капчи из GET /api/auth/captcha или errors[].customData ответа с кодом captcha_required'),
                             ),
                         ],
                     ),
@@ -120,11 +115,11 @@ final class Auth
             new OA\Response(
                 response: 200,
                 description: 'Пользователь создан; подтверждение требуется только при включённой опции ядра',
-                content: new OA\Schema(ref: RegistrationResponse::class),
+                content: new OA\Schema(ref: SuccessResponse::class),
             ),
             new OA\Response(
                 response: 400,
-                description: 'Ошибка запроса',
+                description: 'Ошибка запроса. Без валидной капчи — errors[].code = captcha_required и errors[].customData{captcha_sid, captcha_url}',
                 content: new OA\Schema(ref: ApiError::class),
             ),
         ],
@@ -160,7 +155,7 @@ final class Auth
                             ),
                             new OA\Property(
                                 property: 'remember',
-                                schema: new OA\Schema(type: 'boolean', default: false, description: 'Запомнить меня'),
+                                schema: new OA\Schema(type: 'boolean', default: true, description: 'Запомнить меня'),
                             ),
                             new OA\Property(
                                 property: 'captcha_word',
@@ -179,7 +174,7 @@ final class Auth
             new OA\Response(
                 response: 200,
                 description: 'Успешный ответ',
-                content: new OA\Schema(ref: AuthResponse::class),
+                content: new OA\Schema(ref: SuccessResponse::class),
             ),
             new OA\Response(
                 response: 400,
@@ -222,7 +217,7 @@ final class Auth
             new OA\Response(
                 response: 200,
                 description: 'Успешный ответ',
-                content: new OA\Schema(ref: AuthResultResponse::class),
+                content: new OA\Schema(ref: SuccessResponse::class),
             ),
             new OA\Response(
                 response: 400,
@@ -271,7 +266,7 @@ final class Auth
             new OA\Response(
                 response: 200,
                 description: 'Успешный ответ',
-                content: new OA\Schema(ref: AuthResultResponse::class),
+                content: new OA\Schema(ref: SuccessResponse::class),
             ),
             new OA\Response(
                 response: 400,
@@ -315,7 +310,7 @@ final class Auth
         path: '/api/auth/password/forgot',
         operationId: 'authPasswordForgot',
         summary: 'Запросить восстановление пароля',
-        description: 'Отправляет письмо с контрольным словом на указанный e-mail. Ответ одинаков для существующего и неизвестного e-mail.',
+        description: 'Отправляет письмо с контрольным словом на указанный e-mail. Ответ одинаков для существующего и неизвестного e-mail. Капча обязательна.',
         requestBody: new OA\RequestBody(
             required: true,
             content: [
@@ -331,11 +326,11 @@ final class Auth
                             ),
                             new OA\Property(
                                 property: 'captcha_word',
-                                schema: new OA\Schema(type: 'string', example: 'a1b2c', description: 'Код с картинки, если ядро её затребовало'),
+                                schema: new OA\Schema(type: 'string', example: 'a1b2c', description: 'Код с картинки; капча обязательна'),
                             ),
                             new OA\Property(
                                 property: 'captcha_sid',
-                                schema: new OA\Schema(type: 'string', example: '0a1b2c3d4e5f', description: 'ID капчи из GET /api/auth/captcha'),
+                                schema: new OA\Schema(type: 'string', example: '0a1b2c3d4e5f', description: 'ID капчи из GET /api/auth/captcha или errors[].customData ответа с кодом captcha_required'),
                             ),
                         ],
                     ),
@@ -346,7 +341,7 @@ final class Auth
             new OA\Response(
                 response: 200,
                 description: 'Успешный ответ',
-                content: new OA\Schema(ref: AuthResultResponse::class),
+                content: new OA\Schema(ref: SuccessResponse::class),
             ),
             new OA\Response(
                 response: 400,
@@ -366,7 +361,7 @@ final class Auth
         path: '/api/auth/password/reset',
         operationId: 'authPasswordReset',
         summary: 'Установить новый пароль',
-        description: 'Устанавливает новый пароль по e-mail и контрольному слову из письма восстановления.',
+        description: 'Устанавливает новый пароль по e-mail и контрольному слову из письма восстановления. Капча обязательна.',
         requestBody: new OA\RequestBody(
             required: true,
             content: [
@@ -382,7 +377,7 @@ final class Auth
                             ),
                             new OA\Property(
                                 property: 'password',
-                                schema: new OA\Schema(type: 'string', example: 'N3wP@ssw0rd'),
+                                schema: new OA\Schema(type: 'string', minLength: 8, example: 'N3wP@ssw0rd'),
                             ),
                             new OA\Property(
                                 property: 'checkword',
@@ -390,15 +385,15 @@ final class Auth
                             ),
                             new OA\Property(
                                 property: 'password_confirm',
-                                schema: new OA\Schema(type: 'string', description: 'Повтор пароля; если пусто — совпадает с password'),
+                                schema: new OA\Schema(type: 'string', description: 'Повтор пароля; если не передан — совпадает с password'),
                             ),
                             new OA\Property(
                                 property: 'captcha_word',
-                                schema: new OA\Schema(type: 'string', example: 'a1b2c', description: 'Код с картинки, если ядро её затребовало'),
+                                schema: new OA\Schema(type: 'string', example: 'a1b2c', description: 'Код с картинки; капча обязательна'),
                             ),
                             new OA\Property(
                                 property: 'captcha_sid',
-                                schema: new OA\Schema(type: 'string', example: '0a1b2c3d4e5f', description: 'ID капчи из GET /api/auth/captcha'),
+                                schema: new OA\Schema(type: 'string', example: '0a1b2c3d4e5f', description: 'ID капчи из GET /api/auth/captcha или errors[].customData ответа с кодом captcha_required'),
                             ),
                         ],
                     ),
@@ -409,7 +404,7 @@ final class Auth
             new OA\Response(
                 response: 200,
                 description: 'Успешный ответ',
-                content: new OA\Schema(ref: AuthResultResponse::class),
+                content: new OA\Schema(ref: SuccessResponse::class),
             ),
             new OA\Response(
                 response: 400,

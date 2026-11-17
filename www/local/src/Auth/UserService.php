@@ -23,7 +23,7 @@ final class UserService
      */
     public function find(string $email, bool $onlyActive = true): ?array
     {
-        $user = $this->findByEmail(trim($email));
+        $user = $this->findByEmail($email);
 
         if ($user === null || ($onlyActive && $user['ACTIVE'] !== 'Y')) {
             return null;
@@ -44,15 +44,6 @@ final class UserService
         }
 
         return $user;
-    }
-
-    public function emailExists(string $email): bool
-    {
-        return (bool) UserTable::getList([
-            'select' => ['ID'],
-            'filter' => ['=EMAIL' => trim($email)],
-            'limit' => 1,
-        ])->fetch();
     }
 
     /**
@@ -91,7 +82,7 @@ final class UserService
         $userId = (int) $USER->Add($fields);
 
         if ($userId <= 0) {
-            throw new SystemException($USER->LAST_ERROR ?: 'Не удалось создать пользователя'));
+            throw new SystemException($USER->LAST_ERROR ?: 'Не удалось создать пользователя');
         }
 
         return $userId;
@@ -107,7 +98,7 @@ final class UserService
         global $USER;
 
         if ($USER->Update($userId, $fields) === false) {
-            throw new SystemException($USER->LAST_ERROR ?: 'Не удалось обновить пользователя'));
+            throw new SystemException($USER->LAST_ERROR ?: 'Не удалось обновить пользователя');
         }
     }
 

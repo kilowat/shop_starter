@@ -4,8 +4,10 @@ namespace Controllers;
 
 use App\Auth\AuthService;
 use App\Auth\Dto\ConfirmRegistrationRequest;
+use App\Auth\Dto\ForgotPasswordRequest;
 use App\Auth\Dto\LoginRequest;
 use App\Auth\Dto\RegisterRequest;
+use App\Auth\Dto\ResendConfirmationRequest;
 use App\Auth\Dto\ResetPasswordRequest;
 use App\Helper\Captcha\CaptchaActionFilter;
 use Bitrix\Main\Engine\ActionFilter;
@@ -14,6 +16,15 @@ use Bitrix\Main\Validation\Engine\AutoWire\ValidationParameter;
 
 final class AuthController extends Controller
 {
+    private const REQUEST_DTO = [
+        LoginRequest::class,
+        RegisterRequest::class,
+        ConfirmRegistrationRequest::class,
+        ResendConfirmationRequest::class,
+        ForgotPasswordRequest::class,
+        ResetPasswordRequest::class,
+    ];
+
     private AuthService $auth;
 
     protected function init(): void
@@ -30,17 +41,14 @@ final class AuthController extends Controller
 
     public function configureActions(): array
     {
+        $captcha = [new CaptchaActionFilter()];
+
         return [
-            'login' => [
-                'prefilters' => [
-                    new CaptchaActionFilter(),
-                ],
-            ],
-            'confirmRegistration' => [
-                'prefilters' => [
-                    new CaptchaActionFilter(),
-                ],
-            ],
+            'login' => ['prefilters' => $captcha],
+            'register' => ['prefilters' => $captcha],
+            'confirmRegistration' => ['prefilters' => $captcha],
+            'forgotPassword' => ['prefilters' => $captcha],
+            'resetPassword' => ['prefilters' => $captcha],
             'logout' => [
                 'prefilters' => [
                     new ActionFilter\Authentication(),
@@ -59,65 +67,54 @@ final class AuthController extends Controller
 
     public function getAutoWiredParameters(): array
     {
-        return [
-            new ValidationParameter(
-                LoginRequest::class,
-                fn() => LoginRequest::fromRequest($this->getRequest()),
+        return array_map(
+            fn(string $dto) => new ValidationParameter(
+                $dto,
+                fn() => $dto::fromRequest($this->getRequest()),
             ),
-            new ValidationParameter(
-                RegisterRequest::class,
-                fn() => RegisterRequest::fromRequest($this->getRequest()),
-            ),
-            new ValidationParameter(
-                ConfirmRegistrationRequest::class,
-                fn() => ConfirmRegistrationRequest::fromRequest($this->getRequest()),
-            ),
-            new ValidationParameter(
-                ResetPasswordRequest::class,
-                fn() => ResetPasswordRequest::fromRequest($this->getRequest()),
-            ),
-        ];
+            self::REQUEST_DTO,
+        );
     }
 
     /**
      * Вход по e-mail и паролю.
      */
-    public function loginAction(LoginRequest $request): array
+    public function loginAction(LoginRequest $request): void
     {
-        return $this->auth->login($request);
+        $this->auth->login($request);
     }
 
     /**
-     * Регистрация по e-mail: имя и телефон опциональны, пароль генерируется случайно.
+     * Регистрация по e-mail и паролю.
      * Подтверждение по коду из письма — если включена опция ядра.
      */
-    public function registerAction(RegisterRequest $request): array
+    public function registerAction(RegisterRequest $request): void
     {
-        return $this->auth->register($request);
+        $this->auth->register($request);
     }
 
     /**
      * Подтверждение регистрации кодом из письма.
      */
-    public function confirmRegistrationAction(ConfirmRegistrationRequest $request): array
+    public function confirmRegistrationAction(ConfirmRegistrationRequest $request): void
     {
-        return $this->auth->confirmRegistration($request);
+        $this->auth->confirmRegistration($request);
     }
 
     /**
      * Повторная отправка кода подтверждения.
      */
-    public function resendConfirmationAction(string $email): array
+    public function resendConfirmationAction(ResendConfirmationRequest $request): void
     {
-        return $this->auth->resendConfirmation($email);
+        $this->auth->resendConfirmation($request);
     }
 
     /**
      * Выход.
      */
-    public function logoutAction(): array
+    public function logoutAction(): void
     {
-        return $this->auth->logout();
+        $this->auth->logout();
     }
 
     /**
@@ -131,16 +128,16 @@ final class AuthController extends Controller
     /**
      * Отправить письмо для восстановления пароля.
      */
-    public function forgotPasswordAction(string $email, string $captcha_word = '', string $captcha_sid = ''): array
+    public function forgotPasswordAction(ForgotPasswordRequest $request): void
     {
-        return $this->auth->requestPasswordReset($email, $captcha_word, $captcha_sid);
+        $this->auth->requestPasswordReset($request);
     }
 
     /**
      * Установить новый пароль по контрольному слову из письма.
      */
-    public function resetPasswordAction(ResetPasswordRequest $request): array
+    public function resetPasswordAction(ResetPasswordRequest $request): void
     {
-        return $this->auth->resetPassword($request);
+        $this->auth->resetPassword($request);
     }
 }

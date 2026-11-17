@@ -13,7 +13,7 @@ final readonly class ResendConfirmationRequest
 
     public function __construct(
         #[Email()]
-        public string $email
+        public string $email,
     ) {
     }
 }

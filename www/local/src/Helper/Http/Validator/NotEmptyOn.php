@@ -16,7 +16,6 @@ use Bitrix\Main\Validation\Validator\NotEmptyValidator;
  * поэтому работает со штатным ValidationParameter.
  *
  * Проверяет ЗНАЧЕНИЕ: '' и null не проходят, 0 проходит только с allowZero: true.
- * Если нужно "передать, но можно пустое" - RequiredOn.
  *
  * #[NotEmptyOn([RequestMethod::Post, RequestMethod::Put])]
  * #[NotEmptyOn(['POST'], allowZero: true)]

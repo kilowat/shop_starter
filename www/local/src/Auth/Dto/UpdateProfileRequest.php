@@ -8,7 +8,6 @@ use App\Helper\Http\Mapper\Field;
 use App\Helper\Http\Mapper\Filter;
 use App\Helper\Http\Mapper\RequestMapper;
 use App\Helper\Http\Mapper\Sanitize;
-use Bitrix\Main\Validation\Rule\Phone;
 
 final readonly class UpdateProfileRequest
 {
@@ -16,9 +15,9 @@ final readonly class UpdateProfileRequest
 
     public function __construct(
         #[Sanitize(Filter::StripTags, Filter::Trim)]
+        #[Field('NAME')]
         public ?string $name,
 
-        #[Phone()]
         #[Field('PERSONAL_PHONE')]
         public ?string $phone,
     ) {

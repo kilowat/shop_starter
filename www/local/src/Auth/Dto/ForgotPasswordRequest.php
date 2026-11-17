@@ -13,7 +13,7 @@ final readonly class ForgotPasswordRequest
 
     public function __construct(
         #[Email()]
-        string $email = '',
+        public string $email,
     ) {
     }
 }

@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Auth;
 
 use App\Auth\Dto\ConfirmRegistrationRequest;
+use App\Auth\Dto\ForgotPasswordRequest;
 use App\Auth\Dto\LoginRequest;
 use App\Auth\Dto\RegisterRequest;
+use App\Auth\Dto\ResendConfirmationRequest;
 use App\Auth\Dto\ResetPasswordRequest;
 use Bitrix\Main\Authentication\Context;
 use Bitrix\Main\Authentication\Method;
@@ -17,113 +19,83 @@ use CEvent;
 use CUser;
 
 /**
- * Аутентификация: вход, выход, регистрация (подтверждение — по опции ядра),
- * текущий пользователь, выдача кода восстановления и установка нового пароля
- * по контрольному слову из письма (штатные механизмы CUser).
+ * Аутентификация: вход, выход, регистрация, текущий пользователь,
+ * восстановление пароля по контрольному слову из письма.
+ *
+ * Входные данные приходят в DTO (валидация — атрибуты DTO через автовайр),
+ * капча проверяется CaptchaActionFilter до экшена, поэтому в ядро она не передаётся.
+ * Операции ничего не возвращают; данные пользователя — только me().
  */
 final class AuthService
 {
-    private readonly UserService $users;
-
-    public function __construct(?UserService $users = null)
-    {
-        $this->users = $users ?? new UserService();
+    public function __construct(
+        private readonly UserService $users = new UserService(),
+    ) {
     }
 
-    /**
-     * Вход по e-mail и паролю.
-     *
-     * @return array{user: array{id: int, login: string, email: string, name: string, phone: string}}
-     */
-    public function login(LoginRequest $data): array
+    public function login(LoginRequest $data): void
     {
         global $USER;
 
         $user = $this->users->findOrFail($data->email, 'Неверный e-mail или пароль');
 
-        $result = $USER->Login(
-            (string) $user['LOGIN'],
-            $data->password,
-            $data->remember ? 'Y' : 'N',
-        );
+        $result = $USER->Login($user['LOGIN'], $data->password, $data->remember ? 'Y' : 'N');
 
         if (is_array($result) && ($result['TYPE'] ?? '') === 'ERROR') {
-            throw new SystemException(ErrorMessage::fromResult($result, 'Неверный e-mail или пароль'));
+            throw self::error($result, 'Неверный e-mail или пароль');
         }
-
-        return ['user' => $this->users->getData((int) $USER->GetID())];
     }
 
     /**
-     * Регистрация по e-mail: пароль случайный, имя и телефон опциональны.
-     *
-     * @return array{registered: true, user?: array{id: int, login: string, email: string, name: string, phone: string}, confirmation?: array{email: string}}
+     * Регистрация: CUser::Add (уникальность e-mail и политику пароля проверяет ядро),
+     * капча — фильтром экшена. Подтверждение по коду из письма — если включена опция ядра.
      */
-    public function register(RegisterRequest $data): array
+    public function register(RegisterRequest $data): void
     {
         global $USER;
 
-        $email = $this->users->normalizeEmail($data->email);
-        $this->users->assertEmailAvailable($email);
+        $confirmation = $this->confirmationRequired();
 
-        $name = trim($data->name) !== '' ? trim($data->name) : $this->users->generateDisplayName();
-        $password = Random::getString(16);
+        $userId = $this->users->create([
+            'LOGIN' => $data->email,
+            'EMAIL' => $data->email,
+            'NAME' => $this->users->generateDisplayName(),
+            'PASSWORD' => $data->password,
+            'CONFIRM_PASSWORD' => $data->confirmPassword,
+            'CHECKWORD' => Random::getString(32),
+            'ACTIVE' => $confirmation ? 'N' : 'Y',
+            'CONFIRM_CODE' => $confirmation ? Random::getString(8, true) : '',
+            'LID' => $this->users->siteId(),
+            'LANGUAGE_ID' => defined('LANGUAGE_ID') ? LANGUAGE_ID : 'ru',
+            'GROUP_ID' => $this->users->defaultGroups(),
+        ]);
 
-        $result = $USER->Register(
-            $email,
-            $name,
-            '',
-            $password,
-            $password,
-            $email,
-            $this->users->siteId(),
-            $data->captchaWord,
-            (string) $data->captchaSid,
-        );
-
-        if (!is_array($result) || ($result['TYPE'] ?? 'OK') === 'ERROR' || empty($result['ID'])) {
-            throw new SystemException(ErrorMessage::fromResult($result, 'Не удалось зарегистрироваться'));
-        }
-
-        $userId = (int) $result['ID'];
-
-        if (trim($data->phone) !== '') {
-            $this->users->update($userId, ['PERSONAL_PHONE' => trim($data->phone)]);
-        }
-
-        if (!$this->confirmationRequired()) {
-            $USER->Authorize(
-                (new Context())->setUserId($userId)->setMethod(Method::Registration),
-                $data->remember,
+        if ($confirmation) {
+            $this->sendConfirmation(
+                $this->users->findOrFail($data->email, 'Пользователь не найден', false)
             );
 
-            return ['registered' => true, 'user' => $this->users->getData($userId)];
+            return;
         }
 
-        return [
-            'registered' => true,
-            'confirmation' => ['email' => $email],
-        ];
+        $USER->Authorize(
+            (new Context())->setUserId($userId)->setMethod(Method::Registration),
+        );
     }
 
-    /**
-     * @return array{user: array{id: int, login: string, email: string, name: string, phone: string}}
-     */
-    public function confirmRegistration(ConfirmRegistrationRequest $data): array
+    public function confirmRegistration(ConfirmRegistrationRequest $data): void
     {
         global $USER;
 
-        $email = $this->users->normalizeEmail($data->email);
-        $user = $this->users->findOrFail($email, 'Пользователь не найден', false);
+        $user = $this->users->findOrFail($data->email, 'Пользователь не найден', false);
 
         if ($user['ACTIVE'] === 'Y') {
             throw new SystemException('Аккаунт уже подтверждён, выполните вход');
         }
 
-        $expected = trim((string) $user['CONFIRM_CODE']);
-        $code = trim($data->code);
+        $expected = (string) $user['CONFIRM_CODE'];
 
-        if ($expected === '' || $code === '' || !hash_equals($expected, $code)) {
+        if ($expected === '' || !hash_equals($expected, $data->code)) {
             throw new SystemException('Неверный код подтверждения');
         }
 
@@ -134,42 +106,25 @@ final class AuthService
             (new Context())->setUserId($userId)->setMethod(Method::Registration),
             $data->remember,
         );
-
-        return ['user' => $this->users->getData($userId)];
     }
 
-    /**
-     * @return array{sent: true}
-     */
-    public function resendConfirmation(string $email): array
+    public function resendConfirmation(ResendConfirmationRequest $data): void
     {
-        $email = $this->users->normalizeEmail($email);
-        $user = $this->users->find($email, false);
+        $user = $this->users->find($data->email, false);
 
         if ($user !== null && $user['ACTIVE'] !== 'Y') {
             $this->sendConfirmation($user);
         }
-
-        return ['sent' => true];
     }
 
-    /**
-     * Выход.
-     *
-     * @return array{logged_out: true}
-     */
-    public function logout(): array
+    public function logout(): void
     {
         global $USER;
 
         $USER->Logout();
-
-        return ['logged_out' => true];
     }
 
     /**
-     * Текущий авторизованный пользователь.
-     *
      * @return array{user: array{id: int, login: string, email: string, name: string, phone: string}}
      */
     public function me(): array
@@ -180,53 +135,35 @@ final class AuthService
     }
 
     /**
-     * Отправить письмо с контрольным словом для восстановления пароля.
-     *
-     * Ядро отвечает одинаково и для существующего, и для неизвестного e-mail.
-     *
-     * @return array{sent: true}
+     * Письмо с контрольным словом. Ядро отвечает одинаково
+     * для существующего и неизвестного e-mail.
      */
-    public function requestPasswordReset(string $email, string $captchaWord = '', string|int $captchaSid = 0): array
+    public function requestPasswordReset(ForgotPasswordRequest $data): void
     {
-        $result = CUser::SendPassword('', trim($email), SITE_ID, $captchaWord, $captchaSid);
+        $result = CUser::SendPassword('', $data->email, $this->users->siteId());
 
-        if (is_array($result) && ($result['TYPE'] ?? 'OK') === 'ERROR') {
-            throw new SystemException(ErrorMessage::fromResult($result, 'Не удалось отправить письмо'));
-        }
-
-        return ['sent' => true];
+        self::assertOk($result, 'Не удалось отправить письмо');
     }
 
     /**
-     * Установить новый пароль по контрольному слову из письма.
-     *
-     * @return array{changed: true}
+     * Новый пароль по контрольному слову из письма.
+     * Непереданный password_confirm означает «совпадает с password».
      */
-    public function resetPassword(ResetPasswordRequest $data): array
+    public function resetPassword(ResetPasswordRequest $data): void
     {
         global $USER;
 
-        $user = $this->users->find($data->email);
-
-        if ($user === null) {
-            throw new SystemException('Пользователь с таким e-mail не найден');
-        }
+        $user = $this->users->findOrFail($data->email, 'Пользователь с таким e-mail не найден');
 
         $result = $USER->ChangePassword(
             $user['LOGIN'],
             $data->checkword,
             $data->password,
-            $data->passwordConfirm,
-            SITE_ID,
-            $data->captchaWord,
-            $data->captchaSid,
+            $data->passwordConfirm ?? $data->password,
+            $this->users->siteId(),
         );
 
-        if (!is_array($result) || ($result['TYPE'] ?? 'OK') === 'ERROR') {
-            throw new SystemException(ErrorMessage::fromResult($result, 'Не удалось изменить пароль'));
-        }
-
-        return ['changed' => true];
+        self::assertOk($result, 'Не удалось изменить пароль');
     }
 
     private function confirmationRequired(): bool
@@ -250,5 +187,21 @@ final class AuthService
             'USER_IP' => (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
             'USER_HOST' => '',
         ]);
+    }
+
+    private static function assertOk(mixed $result, string $message): void
+    {
+        if (!is_array($result) || ($result['TYPE'] ?? 'OK') === 'ERROR') {
+            throw self::error($result, $message);
+        }
+    }
+
+    private static function error(mixed $result, string $message): SystemException
+    {
+        $text = is_array($result)
+            ? str_replace('<br>', ' ', $result['MESSAGE'] ?? '')
+            : '';
+
+        return new SystemException($text !== '' ? $text : $message);
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Auth;
 
+use App\Auth\Dto\UpdateProfileRequest;
 use Bitrix\Main\Authentication\Context;
 use Bitrix\Main\Authentication\Method;
 use Bitrix\Main\Security\Random;
@@ -11,7 +12,7 @@ use Bitrix\Main\SystemException;
 use CUser;
 
 /**
- * Профиль пользователя: создание для заказа (create), изменение данных,
+ * Профиль пользователя: создание для заказа, изменение данных,
  * инициирование смены пароля и мягкое удаление (деактивация).
  */
 final class ProfileService
@@ -22,6 +23,7 @@ final class ProfileService
     }
 
     /**
+     * Создать пользователя для заказа (без регистрации) и сразу авторизовать.
      *
      * @param array{email: string, name?: string, phone?: string} $data
      */
@@ -30,16 +32,14 @@ final class ProfileService
         global $USER;
 
         $email = $data['email'];
-
-        $name = trim((string) ($data['name'] ?? ''));
-        $name = $name !== '' ? $name : $this->users->generateDisplayName();
-        $phone = trim((string) ($data['phone'] ?? ''));
+        $name = $data['name'] ?? '';
+        $phone = $data['phone'] ?? '';
         $password = Random::getString(16);
 
         $fields = [
             'LOGIN' => $email,
             'EMAIL' => $email,
-            'NAME' => $name,
+            'NAME' => $name !== '' ? $name : $this->users->generateDisplayName(),
             'PASSWORD' => $password,
             'CONFIRM_PASSWORD' => $password,
             'ACTIVE' => 'Y',
@@ -70,50 +70,37 @@ final class ProfileService
 
     /**
      * Обновить имя и/или телефон текущего пользователя.
-     *
+     * Поля приходят из DTO: toFields() отдаёт только заполненные.
      */
-    public function updateProfile(string $name = '', string $phone = ''): void
+    public function updateProfile(UpdateProfileRequest $data): void
     {
         global $USER;
 
         $userId = (int) $USER->GetID();
-        $fields = [];
-
-        if (trim($name) !== '') {
-            $fields['NAME'] = trim($name);
-        }
-
-        if (trim($phone) !== '') {
-            $fields['PERSONAL_PHONE'] = trim($phone);
-        }
+        $fields = $data->toFields();
 
         if ($fields !== []) {
             $this->users->update($userId, $fields);
         }
-
     }
 
     /**
-     * Смена пароля: письмо с контрольным словом на e-mail текущего пользователя,
-     * затем новый пароль устанавливается через Auth::resetPassword.
-     *
+     * Письмо с контрольным словом на e-mail текущего пользователя;
+     * новый пароль устанавливается через AuthService::resetPassword.
      */
     public function requestPasswordChange(): void
     {
         global $USER;
 
-        $result = CUser::SendPassword('', trim((string) $USER->GetEmail()), SITE_ID);
+        $result = CUser::SendPassword('', (string) $USER->GetEmail(), $this->users->siteId());
 
         if (is_array($result) && ($result['TYPE'] ?? 'OK') === 'ERROR') {
-            throw new SystemException($result['MESSAGE']);
+            throw new SystemException(str_replace('<br>', ' ', $result['MESSAGE'] ?? ''));
         }
-
-        return;
     }
 
     /**
-     * Мягкое удаление профиля: деактивация текущего пользователя и выход.
-     *
+     * Мягкое удаление: деактивация текущего пользователя и выход.
      */
     public function deleteProfile(): void
     {
@@ -121,7 +108,5 @@ final class ProfileService
 
         $this->users->deactive((int) $USER->GetID());
         $USER->Logout();
-
-        return;
     }
 }

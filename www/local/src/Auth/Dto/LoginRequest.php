@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Auth\Dto;
 
+use App\Helper\Http\Mapper\Filter;
 use App\Helper\Http\Mapper\RequestMapper;
+use App\Helper\Http\Mapper\Sanitize;
 use Bitrix\Main\Validation\Rule\Email;
-use Bitrix\Main\Validation\Rule\Min;
-
-
+use Bitrix\Main\Validation\Rule\Length;
 
 final readonly class LoginRequest
 {
@@ -18,10 +18,11 @@ final readonly class LoginRequest
         #[Email()]
         public string $email,
 
-        #[Min(8)]
+        #[Length(min: 8)]
+        #[Sanitize(Filter::Raw)]
         public string $password,
 
-        public bool $remember = false,
+        public bool $remember = true,
     ) {
     }
 }

@@ -5,8 +5,7 @@ namespace App\Swagger\Paths;
 use OpenApi\Spec as OA;
 
 use App\Swagger\Schemas\ApiError;
-use App\Swagger\Schemas\Auth\AuthResponse;
-use App\Swagger\Schemas\Auth\AuthResultResponse;
+use App\Swagger\Schemas\SuccessResponse;
 
 #[OA\Tag(name: 'Profile', description: 'Профиль текущего пользователя')]
 final class Profile
@@ -43,7 +42,7 @@ final class Profile
             new OA\Response(
                 response: 200,
                 description: 'Успешный ответ',
-                content: new OA\Schema(ref: AuthResponse::class),
+                content: new OA\Schema(ref: SuccessResponse::class),
             ),
             new OA\Response(
                 response: 400,
@@ -68,7 +67,7 @@ final class Profile
             new OA\Response(
                 response: 200,
                 description: 'Успешный ответ',
-                content: new OA\Schema(ref: AuthResultResponse::class),
+                content: new OA\Schema(ref: SuccessResponse::class),
             ),
             new OA\Response(
                 response: 400,
@@ -93,12 +92,7 @@ final class Profile
             new OA\Response(
                 response: 200,
                 description: 'Успешный ответ',
-                content: new OA\Schema(
-                    type: 'object',
-                    properties: [
-                        new OA\Property(property: 'deleted', schema: new OA\Schema(type: 'boolean', example: true)),
-                    ],
-                ),
+                content: new OA\Schema(ref: SuccessResponse::class),
             ),
             new OA\Response(
                 response: 400,
