@@ -8,7 +8,8 @@ use App\Swagger\Schemas\ApiError;
 #[OA\Schema]
 final class BasketResponse
 {
-    #[OA\Property(example: 'success')]
+    #[OA\Property]
+    #[OA\Schema(type: 'string', example: 'success')]
     public string $status;
 
     #[OA\Property]

@@ -11,45 +11,20 @@ final class Api
 }
 
 #[OA\Schema]
-final class ApiError
+final class ErrorResponse
 {
     #[OA\Property]
-    #[OA\Schema(type: 'string', example: 'Некорректные параметры')]
-    public string $message;
+    #[OA\Schema(type: 'string', example: 'error')]
+    public string $status;
 
     #[OA\Property]
-    #[OA\Schema(type: 'string', example: 'INVALID_PARAMS')]
-    public string $code;
+    #[OA\Schema(type: 'object', nullable: true, example: null, description: 'Данные ответа; при ошибке всегда null')]
+    public ?object $data;
 
     #[OA\Property]
     #[OA\Schema(
-        type: 'object',
-        nullable: true,
-        description: 'Дополнительные данные ошибки; например, параметры капчи для code = captcha_required',
-        properties: [
-            new OA\Property(property: 'captcha_sid', schema: new OA\Schema(type: 'string', example: '0a1b2c3d4e5f')),
-            new OA\Property(property: 'captcha_url', schema: new OA\Schema(type: 'string', example: '/bitrix/tools/captcha.php?captcha_sid=0a1b2c3d4e5f')),
-        ],
+        type: 'array',
+        items: new OA\Schema(ref: ApiError::class),
     )]
-    public ?array $customData;
-}
-
-#[OA\Response(
-    component: 'Error',
-    description: 'Ошибка',
-    content: new OA\Schema(
-        type: 'object',
-        properties: [
-            new OA\Property(property: 'status', type: 'string', example: 'error'),
-            new OA\Property(property: 'data', type: 'object', nullable: true),
-            new OA\Property(
-                property: 'errors',
-                type: 'array',
-                items: new OA\Schema(ref: ApiError::class)
-            ),
-        ]
-    )
-)]
-final class ErrorResponse
-{
+    public array $errors;
 }

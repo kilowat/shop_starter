@@ -7,10 +7,12 @@ use OpenApi\Spec as OA;
 #[OA\Schema]
 final class BasketSummary
 {
-    #[OA\Property(example: 3)]
+    #[OA\Property]
+    #[OA\Schema(type: 'integer', example: 3)]
     public int $items_count;
 
-    #[OA\Property(example: 5)]
+    #[OA\Property]
+    #[OA\Schema(type: 'integer', example: 5)]
     public int $quantity;
 
     #[OA\Property]

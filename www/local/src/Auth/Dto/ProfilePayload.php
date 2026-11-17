@@ -20,7 +20,7 @@ final readonly class ProfilePayload
         public ?string $name,
 
         #[Phone()]
-        #[Field('PHONE')]
+        #[Field('PERSONAL_PHONE')]
         public ?string $phone,
     ) {
     }

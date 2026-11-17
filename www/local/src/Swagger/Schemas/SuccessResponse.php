@@ -4,14 +4,11 @@ namespace App\Swagger\Schemas;
 
 use OpenApi\Spec as OA;
 
-/**
- * Успешный ответ без данных: действия Auth/Profile ничего не возвращают,
- * текущий пользователь — GET /api/auth/me.
- */
 #[OA\Schema]
 final class SuccessResponse
 {
-    #[OA\Property(example: 'success')]
+    #[OA\Property]
+    #[OA\Schema(type: 'string', example: 'success')]
     public string $status;
 
     #[OA\Property]

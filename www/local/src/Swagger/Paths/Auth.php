@@ -5,8 +5,8 @@ namespace App\Swagger\Paths;
 use OpenApi\Spec as OA;
 
 use App\Swagger\Schemas\ApiError;
+use App\Swagger\Schemas\ErrorResponse;
 use App\Swagger\Schemas\Auth\AuthResponse;
-use App\Swagger\Schemas\Auth\CaptchaResponse;
 use App\Swagger\Schemas\SuccessResponse;
 
 #[OA\Tag(name: 'Auth', description: 'Авторизация и восстановление пароля')]
@@ -18,6 +18,7 @@ final class Auth
         path: '/api/auth/login',
         operationId: 'authLogin',
         summary: 'Вход по e-mail и паролю',
+        description: 'Проверяет пару e-mail/пароль и авторизует пользователя. Капча на входе не запрашивается (опции безопасности групп по умолчанию не заданы).',
         requestBody: new OA\RequestBody(
             required: true,
             content: [
@@ -33,19 +34,11 @@ final class Auth
                             ),
                             new OA\Property(
                                 property: 'password',
-                                schema: new OA\Schema(type: 'string', example: 'P@ssw0rd'),
+                                schema: new OA\Schema(type: 'string', minLength: 8, example: 'P@ssw0rd'),
                             ),
                             new OA\Property(
                                 property: 'remember',
-                                schema: new OA\Schema(type: 'boolean', default: true, description: 'Запомнить меня'),
-                            ),
-                            new OA\Property(
-                                property: 'captcha_word',
-                                schema: new OA\Schema(type: 'string', example: 'a1b2c', description: 'Код с картинки; капча обязательна при каждом входе'),
-                            ),
-                            new OA\Property(
-                                property: 'captcha_sid',
-                                schema: new OA\Schema(type: 'string', example: '0a1b2c3d4e5f', description: 'ID капчи из GET /api/auth/captcha или errors[].customData ответа с кодом captcha_required'),
+                                schema: new OA\Schema(type: 'boolean', default: true, description: 'Запомнить меня (cookie UIDH/UIDL)'),
                             ),
                         ],
                     ),
@@ -60,8 +53,8 @@ final class Auth
             ),
             new OA\Response(
                 response: 400,
-                description: 'Ошибка запроса. Без валидной капчи — errors[].code = captcha_required и errors[].customData{captcha_sid, captcha_url}',
-                content: new OA\Schema(ref: ApiError::class),
+                description: 'Неверный e-mail или пароль',
+                content: new OA\Schema(ref: ErrorResponse::class),
             ),
         ],
     )]
@@ -76,7 +69,7 @@ final class Auth
         path: '/api/auth/register',
         operationId: 'authRegister',
         summary: 'Регистрация по e-mail и паролю',
-        description: 'Имя присваивается автоматически («Пользователь XXXXX»). Подтверждение кодом из письма — только если включена опция ядра new_user_registration_email_confirmation; иначе пользователь сразу авторизуется.',
+        description: 'Имя присваивается автоматически («Пользователь XXXXX»), логин равен e-mail. Если включена опция ядра new_user_registration_email_confirmation, пользователь создаётся неактивным, получает письмо NEW_USER_CONFIRM и требует подтверждения; иначе сразу авторизуется. Капча обязательна только при включённой опции ядра captcha_registration.',
         requestBody: new OA\RequestBody(
             required: true,
             content: [
@@ -100,11 +93,11 @@ final class Auth
                             ),
                             new OA\Property(
                                 property: 'captcha_word',
-                                schema: new OA\Schema(type: 'string', example: 'a1b2c', description: 'Код с картинки; капча обязательна при регистрации'),
+                                schema: new OA\Schema(type: 'string', example: 'a1b2c', description: 'Код с картинки; нужен при включённой опции main/captcha_registration'),
                             ),
                             new OA\Property(
                                 property: 'captcha_sid',
-                                schema: new OA\Schema(type: 'string', example: '0a1b2c3d4e5f', description: 'ID капчи из GET /api/auth/captcha или errors[].customData ответа с кодом captcha_required'),
+                                schema: new OA\Schema(type: 'string', example: '0a1b2c3d4e5f', description: 'ID капчи из GET /api/captcha'),
                             ),
                         ],
                     ),
@@ -114,13 +107,13 @@ final class Auth
         responses: [
             new OA\Response(
                 response: 200,
-                description: 'Пользователь создан; подтверждение требуется только при включённой опции ядра',
+                description: 'Пользователь создан; при включённом подтверждении требуется код из письма',
                 content: new OA\Schema(ref: SuccessResponse::class),
             ),
             new OA\Response(
                 response: 400,
-                description: 'Ошибка запроса. Без валидной капчи — errors[].code = captcha_required и errors[].customData{captcha_sid, captcha_url}',
-                content: new OA\Schema(ref: ApiError::class),
+                description: 'Ошибка запроса (невалидные данные, занятый e-mail, неверная капча)',
+                content: new OA\Schema(ref: ErrorResponse::class),
             ),
         ],
     )]
@@ -129,13 +122,13 @@ final class Auth
     }
 
 
-    // POST /api/auth/register/confirm
+    // POST /api/auth/confirm
 
     #[OA\Operation\Post(
-        path: '/api/auth/register/confirm',
-        operationId: 'authRegisterConfirm',
+        path: '/api/auth/confirm',
+        operationId: 'authConfirm',
         summary: 'Подтвердить регистрацию',
-        description: 'Проверяет код из письма, активирует пользователя и авторизует его. Капча обязательна.',
+        description: 'Проверяет код из письма NEW_USER_CONFIRM, активирует пользователя и авторизует его.',
         requestBody: new OA\RequestBody(
             required: true,
             content: [
@@ -151,20 +144,12 @@ final class Auth
                             ),
                             new OA\Property(
                                 property: 'code',
-                                schema: new OA\Schema(type: 'string', example: '123456'),
+                                schema: new OA\Schema(type: 'string', example: 'a1b2c3d4', description: 'Код подтверждения из письма'),
                             ),
                             new OA\Property(
                                 property: 'remember',
                                 schema: new OA\Schema(type: 'boolean', default: true, description: 'Запомнить меня'),
                             ),
-                            new OA\Property(
-                                property: 'captcha_word',
-                                schema: new OA\Schema(type: 'string', example: 'a1b2c', description: 'Код с картинки; капча обязательна при каждом подтверждении'),
-                            ),
-                            new OA\Property(
-                                property: 'captcha_sid',
-                                schema: new OA\Schema(type: 'string', example: '0a1b2c3d4e5f', description: 'ID капчи из GET /api/auth/captcha или errors[].customData ответа с кодом captcha_required'),
-                            ),
                         ],
                     ),
                 ),
@@ -173,85 +158,17 @@ final class Auth
         responses: [
             new OA\Response(
                 response: 200,
-                description: 'Успешный ответ',
+                description: 'Пользователь активирован и авторизован',
                 content: new OA\Schema(ref: SuccessResponse::class),
             ),
             new OA\Response(
                 response: 400,
-                description: 'Ошибка запроса. Без валидной капчи — errors[].code = captcha_required и errors[].customData{captcha_sid, captcha_url}',
-                content: new OA\Schema(ref: ApiError::class),
+                description: 'Пользователь не найден, уже подтверждён или неверный код',
+                content: new OA\Schema(ref: ErrorResponse::class),
             ),
         ],
     )]
     public function confirmRegistration(): void
-    {
-    }
-
-
-    // POST /api/auth/register/resend
-
-    #[OA\Operation\Post(
-        path: '/api/auth/register/resend',
-        operationId: 'authRegisterResend',
-        summary: 'Повторить код подтверждения',
-        description: 'Повторно отправляет код подтверждения на e-mail неподтверждённого пользователя. Ответ одинаков для существующего и неизвестного e-mail.',
-        requestBody: new OA\RequestBody(
-            required: true,
-            content: [
-                new OA\MediaType(
-                    mediaType: 'application/json',
-                    schema: new OA\Schema(
-                        type: 'object',
-                        required: ['email'],
-                        properties: [
-                            new OA\Property(
-                                property: 'email',
-                                schema: new OA\Schema(type: 'string', format: 'email', example: 'ivanov@example.com'),
-                            ),
-                        ],
-                    ),
-                ),
-            ],
-        ),
-        responses: [
-            new OA\Response(
-                response: 200,
-                description: 'Успешный ответ',
-                content: new OA\Schema(ref: SuccessResponse::class),
-            ),
-            new OA\Response(
-                response: 400,
-                description: 'Ошибка запроса',
-                content: new OA\Schema(ref: ApiError::class),
-            ),
-        ],
-    )]
-    public function resendConfirmation(): void
-    {
-    }
-
-
-    // GET /api/auth/captcha
-
-    #[OA\Operation\Get(
-        path: '/api/auth/captcha',
-        operationId: 'authCaptcha',
-        summary: 'Новая капча для формы входа',
-        description: 'Возвращает свежий ID капчи и URL картинки; используется для обновления капчи.',
-        responses: [
-            new OA\Response(
-                response: 200,
-                description: 'Успешный ответ',
-                content: new OA\Schema(ref: CaptchaResponse::class),
-            ),
-            new OA\Response(
-                response: 400,
-                description: 'Ошибка запроса',
-                content: new OA\Schema(ref: ApiError::class),
-            ),
-        ],
-    )]
-    public function captcha(): void
     {
     }
 
@@ -262,6 +179,16 @@ final class Auth
         path: '/api/auth/logout',
         operationId: 'authLogout',
         summary: 'Выход',
+        description: 'Снимает авторизацию и удаляет сессионные и remember-me cookies. Требуется авторизация и CSRF-токен.',
+        parameters: [
+            new OA\Parameter(
+                name: 'sessid',
+                in: 'query',
+                required: true,
+                description: 'CSRF-токен; также принимается в form-data или заголовком X-Bitrix-Csrf-Token (JSON-тело ядро не читает)',
+                schema: new OA\Schema(type: 'string', example: 'a1b2c3d4e5f6'),
+            ),
+        ],
         responses: [
             new OA\Response(
                 response: 200,
@@ -270,8 +197,13 @@ final class Auth
             ),
             new OA\Response(
                 response: 400,
-                description: 'Ошибка запроса',
-                content: new OA\Schema(ref: ApiError::class),
+                description: 'Неверный CSRF-токен; новый токен возвращается в errors[].customData.csrf',
+                content: new OA\Schema(ref: ErrorResponse::class),
+            ),
+            new OA\Response(
+                response: 401,
+                description: 'Требуется авторизация',
+                content: new OA\Schema(ref: ErrorResponse::class),
             ),
         ],
     )]
@@ -286,6 +218,7 @@ final class Auth
         path: '/api/auth/me',
         operationId: 'authMe',
         summary: 'Текущий пользователь',
+        description: 'Возвращает данные авторизованного пользователя.',
         responses: [
             new OA\Response(
                 response: 200,
@@ -293,9 +226,9 @@ final class Auth
                 content: new OA\Schema(ref: AuthResponse::class),
             ),
             new OA\Response(
-                response: 400,
-                description: 'Ошибка запроса',
-                content: new OA\Schema(ref: ApiError::class),
+                response: 401,
+                description: 'Требуется авторизация',
+                content: new OA\Schema(ref: ErrorResponse::class),
             ),
         ],
     )]
@@ -310,7 +243,7 @@ final class Auth
         path: '/api/auth/password/forgot',
         operationId: 'authPasswordForgot',
         summary: 'Запросить восстановление пароля',
-        description: 'Отправляет письмо с контрольным словом на указанный e-mail. Ответ одинаков для существующего и неизвестного e-mail. Капча обязательна.',
+        description: 'Отправляет письмо с контрольным словом (USER_PASS_REQUEST). Ответ одинаков для существующего и неизвестного e-mail. Если включена опция ядра main/captcha_restoring_password, запрос без капчи будет отклонён ядром.',
         requestBody: new OA\RequestBody(
             required: true,
             content: [
@@ -324,14 +257,6 @@ final class Auth
                                 property: 'email',
                                 schema: new OA\Schema(type: 'string', format: 'email', example: 'ivanov@example.com'),
                             ),
-                            new OA\Property(
-                                property: 'captcha_word',
-                                schema: new OA\Schema(type: 'string', example: 'a1b2c', description: 'Код с картинки; капча обязательна'),
-                            ),
-                            new OA\Property(
-                                property: 'captcha_sid',
-                                schema: new OA\Schema(type: 'string', example: '0a1b2c3d4e5f', description: 'ID капчи из GET /api/auth/captcha или errors[].customData ответа с кодом captcha_required'),
-                            ),
                         ],
                     ),
                 ),
@@ -340,13 +265,13 @@ final class Auth
         responses: [
             new OA\Response(
                 response: 200,
-                description: 'Успешный ответ',
+                description: 'Письмо отправлено (ответ нейтрален для неизвестного e-mail)',
                 content: new OA\Schema(ref: SuccessResponse::class),
             ),
             new OA\Response(
                 response: 400,
                 description: 'Ошибка запроса',
-                content: new OA\Schema(ref: ApiError::class),
+                content: new OA\Schema(ref: ErrorResponse::class),
             ),
         ],
     )]
@@ -361,7 +286,7 @@ final class Auth
         path: '/api/auth/password/reset',
         operationId: 'authPasswordReset',
         summary: 'Установить новый пароль',
-        description: 'Устанавливает новый пароль по e-mail и контрольному слову из письма восстановления. Капча обязательна.',
+        description: 'Устанавливает новый пароль по e-mail и контрольному слову из письма восстановления.',
         requestBody: new OA\RequestBody(
             required: true,
             content: [
@@ -369,31 +294,23 @@ final class Auth
                     mediaType: 'application/json',
                     schema: new OA\Schema(
                         type: 'object',
-                        required: ['email', 'password', 'checkword'],
+                        required: ['email', 'checkword', 'password'],
                         properties: [
                             new OA\Property(
                                 property: 'email',
                                 schema: new OA\Schema(type: 'string', format: 'email', example: 'ivanov@example.com'),
                             ),
                             new OA\Property(
+                                property: 'checkword',
+                                schema: new OA\Schema(type: 'string', example: 'a1b2c3d4e5f6', description: 'Контрольное слово из письма'),
+                            ),
+                            new OA\Property(
                                 property: 'password',
                                 schema: new OA\Schema(type: 'string', minLength: 8, example: 'N3wP@ssw0rd'),
                             ),
                             new OA\Property(
-                                property: 'checkword',
-                                schema: new OA\Schema(type: 'string', example: 'a1b2c3d4e5f6'),
-                            ),
-                            new OA\Property(
                                 property: 'password_confirm',
-                                schema: new OA\Schema(type: 'string', description: 'Повтор пароля; если не передан — совпадает с password'),
-                            ),
-                            new OA\Property(
-                                property: 'captcha_word',
-                                schema: new OA\Schema(type: 'string', example: 'a1b2c', description: 'Код с картинки; капча обязательна'),
-                            ),
-                            new OA\Property(
-                                property: 'captcha_sid',
-                                schema: new OA\Schema(type: 'string', example: '0a1b2c3d4e5f', description: 'ID капчи из GET /api/auth/captcha или errors[].customData ответа с кодом captcha_required'),
+                                schema: new OA\Schema(type: 'string', nullable: true, description: 'Повтор пароля; если не передан — считается равным password'),
                             ),
                         ],
                     ),
@@ -403,13 +320,13 @@ final class Auth
         responses: [
             new OA\Response(
                 response: 200,
-                description: 'Успешный ответ',
+                description: 'Пароль изменён',
                 content: new OA\Schema(ref: SuccessResponse::class),
             ),
             new OA\Response(
                 response: 400,
-                description: 'Ошибка запроса',
-                content: new OA\Schema(ref: ApiError::class),
+                description: 'Пользователь не найден, неверное контрольное слово или пароль не соответствует политике',
+                content: new OA\Schema(ref: ErrorResponse::class),
             ),
         ],
     )]

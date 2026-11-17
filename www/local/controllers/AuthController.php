@@ -9,7 +9,6 @@ use App\Auth\Dto\EmailRequest;
 use App\Auth\Dto\LoginRequest;
 use App\Auth\Dto\RegisterRequest;
 use App\Auth\Dto\ResetPasswordRequest;
-use App\Helper\Captcha\CaptchaActionFilter;
 use Bitrix\Main\Engine\ActionFilter;
 use Bitrix\Main\Engine\Controller;
 use Bitrix\Main\Validation\Engine\AutoWire\ValidationParameter;
@@ -96,12 +95,15 @@ final class AuthController extends Controller
      */
     public function registerAction(RegisterRequest $request): void
     {
+        $json = $this->getRequest()->getJsonList();
+        $post = $this->getRequest()->getPostList();
+
         $this->authService->register(
             email: $request->email,
             password: $request->password,
             confirmPassword: $request->confirmPassword,
-            captchaSid: $this->getRequest()->getJsonList()->get('captcha_sid'),
-            captchaWord: $this->getRequest()->getJsonList()->get('captcha_word'),
+            captchaWord: (string) ($json->get('captcha_word') ?? $post->get('captcha_word') ?? ''),
+            captchaSid: (string) ($json->get('captcha_sid') ?? $post->get('captcha_sid') ?? ''),
         );
     }
 
@@ -119,7 +121,7 @@ final class AuthController extends Controller
     public function meAction(\Bitrix\Main\Engine\CurrentUser $user): ?array
     {
         return [
-            'id' => $user->getId(),
+            'id' => (int) $user->getId(),
             'name' => $user->getFirstName(),
             'full_name' => $user->getFullName(),
             'email' => $user->getEmail(),
@@ -139,7 +141,7 @@ final class AuthController extends Controller
         );
     }
 
-    public function forgetPasswordAction(EmailRequest $request)
+    public function forgotPasswordAction(EmailRequest $request)
     {
         $this->authService->sendPasswordChangeCode($request->email);
     }

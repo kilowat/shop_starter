@@ -7,18 +7,19 @@ use OpenApi\Spec as OA;
 #[OA\Schema]
 final class AuthUser
 {
-    #[OA\Property(example: 42)]
+    #[OA\Property]
+    #[OA\Schema(type: 'integer', example: 42)]
     public int $id;
 
-    #[OA\Property(example: 'ivanov')]
-    public string $login;
-
-    #[OA\Property(example: 'ivanov@example.com')]
-    public string $email;
-
-    #[OA\Property(example: 'Иван Иванов')]
+    #[OA\Property]
+    #[OA\Schema(type: 'string', example: 'Иван', description: 'Имя пользователя (USER.NAME)')]
     public string $name;
 
-    #[OA\Property(example: '+79001234567')]
-    public string $phone;
+    #[OA\Property]
+    #[OA\Schema(type: 'string', example: 'Иван Иванов', description: 'Полное имя (имя и фамилия)')]
+    public string $full_name;
+
+    #[OA\Property]
+    #[OA\Schema(type: 'string', format: 'email', example: 'ivanov@example.com')]
+    public string $email;
 }

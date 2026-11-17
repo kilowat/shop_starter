@@ -3,7 +3,6 @@
 namespace Controllers;
 
 use App\Auth\Dto\ProfilePayload;
-use App\Auth\Dto\UpdateProfileRequest;
 use App\Auth\ProfileService;
 use Bitrix\Main\Engine\ActionFilter;
 use Bitrix\Main\Engine\Controller;
@@ -37,6 +36,7 @@ final class ProfileController extends Controller
         ];
 
         return [
+            'index' => ['prefilters' => [new ActionFilter\Authentication()]],
             'update' => ['prefilters' => $protected],
             'delete' => ['prefilters' => $protected],
         ];
