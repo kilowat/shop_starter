@@ -5,10 +5,7 @@ namespace Controllers;
 use App\Basket\BasketRequest;
 use App\Basket\BasketService;
 
-use Bitrix\Main\Engine\Controller;
-
-
-final class BasketController extends Controller
+final class BasketController extends ApiController
 {
     private BasketService $basket;
 

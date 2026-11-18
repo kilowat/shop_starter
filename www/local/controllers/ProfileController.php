@@ -5,13 +5,12 @@ namespace Controllers;
 use App\Auth\Dto\ProfilePayload;
 use App\Auth\ProfileService;
 use Bitrix\Main\Engine\ActionFilter;
-use Bitrix\Main\Engine\Controller;
 use Bitrix\Main\Validation\Engine\AutoWire\ValidationParameter;
 
 /**
  * Профиль текущего пользователя.
  */
-final class ProfileController extends Controller
+final class ProfileController extends ApiController
 {
     private ProfileService $profile;
 

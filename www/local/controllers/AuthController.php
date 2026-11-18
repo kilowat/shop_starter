@@ -10,14 +10,13 @@ use App\Auth\Dto\LoginRequest;
 use App\Auth\Dto\RegisterRequest;
 use App\Auth\Dto\ResetPasswordRequest;
 use Bitrix\Main\Engine\ActionFilter;
-use Bitrix\Main\Engine\Controller;
 use Bitrix\Main\Validation\Engine\AutoWire\ValidationParameter;
 
 
 /**
  * Аутентификация и восстановление пароля.
  */
-final class AuthController extends Controller
+final class AuthController extends ApiController
 {
     private AuthService $authService;
 

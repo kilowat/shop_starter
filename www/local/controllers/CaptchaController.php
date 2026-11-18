@@ -4,9 +4,8 @@ namespace Controllers;
 
 use App\Helper\Captcha\CaptchaService;
 use Bitrix\Main\Engine\ActionFilter;
-use Bitrix\Main\Engine\Controller;
 
-final class CaptchaController extends Controller
+final class CaptchaController extends ApiController
 {
     protected function getDefaultPreFilters(): array
     {
