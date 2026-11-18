@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\Auth;
 
 use App\Auth\Dto\ProfilePayload;
-use AuthException;
-use Bitrix\Main\Authentication\ApplicationPasswordTable;
 use Bitrix\Main\Authentication\Context;
 use Bitrix\Main\Authentication\Method;
 use Bitrix\Main\Config\Option;
@@ -15,54 +13,47 @@ use Bitrix\Main\UserTable;
 class AuthService
 {
     /**
-     * Регистрирует обычного пользователя или анонима (если $email не передан).
+     * Регистрирует обычного пользователя
      *
-     * @return array{id: int, needConfirm: bool}
+     * @return array{id: int, need_confirm: bool}
      */
     public function register(
-        ?string $email = null,
-        ?string $password = null,
-        ?string $confirmPassword = null,
+        string $email,
+        string $password,
+        string $confirmPassword,
         ?ProfilePayload $payload = null,
         bool $authorize = false,
     ): array {
         global $USER;
 
-        $email = $email !== null ? trim($email) : '';
+        $email = trim($email);
 
-        if ($email === '') {
-            $email           = $this->anonymousEmail();
-            $password        = ApplicationPasswordTable::generatePassword();
-            $confirmPassword = $password;
-            $needConfirm     = false;
-        } else {
-            if (!check_email($email)) {
-                throw new AuthException('Некорректный email');
-            }
-
-            if ($this->emailExists($email)) {
-                throw new AuthException('Пользователь с таким email уже существует');
-            }
-
-            $needConfirm = Option::get('main', 'new_user_registration_email_confirmation') === 'Y';
+        if (!check_email($email)) {
+            throw new AuthException('Некорректный email');
         }
 
-        $code = $needConfirm ? str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT) : '';
+        if ($this->emailExists($email)) {
+            throw new AuthException('Пользователь с таким email уже существует');
+        }
+
+        $needConfirm = Option::get('main', 'new_user_registration_email_confirmation') === 'Y';
+
+        $code = $needConfirm ? str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT) : '';
 
         $fields = array_merge(
             [
-                'NAME'     => 'Пользователь ' . random_int(10000, 99999),
+                'NAME' => 'Пользователь ' . random_int(10000, 99999),
                 'GROUP_ID' => $this->defaultGroups(),
-                'LID'      => $this->siteId(),
+                'LID' => $this->siteId(),
             ],
             $payload?->toFields() ?? [],
             [
-                'LOGIN'            => $email,
-                'EMAIL'            => $email,
-                'PASSWORD'         => $password,
+                'LOGIN' => $email,
+                'EMAIL' => $email,
+                'PASSWORD' => $password,
                 'CONFIRM_PASSWORD' => $confirmPassword,
-                'ACTIVE'           => $needConfirm ? 'N' : 'Y',
-                'CONFIRM_CODE'     => $code,
+                'ACTIVE' => $needConfirm ? 'N' : 'Y',
+                'CONFIRM_CODE' => $code,
             ],
         );
 
@@ -75,19 +66,19 @@ class AuthService
 
         if ($needConfirm) {
             \CEvent::Send('NEW_USER_CONFIRM', $this->siteId(), [
-                'USER_ID'      => $id,
-                'EMAIL'        => $email,
-                'LOGIN'        => $email,
+                'USER_ID' => $id,
+                'EMAIL' => $email,
+                'LOGIN' => $email,
                 'CONFIRM_CODE' => $code,
             ]);
         } elseif ($authorize) {
             $USER->Authorize(
-                (new Context())->setUserId((int)$id)->setMethod(Method::Registration),
+                (new Context())->setUserId((int) $id)->setMethod(Method::Registration),
                 true,
             );
         }
 
-        return ['id' => (int)$id, 'need_confirm' => $needConfirm];
+        return ['id' => (int) $id, 'need_confirm' => $needConfirm];
     }
 
     public function login(string $login, string $password, bool $remember = true): void
@@ -121,13 +112,13 @@ class AuthService
             throw new AuthException('Аккаунт уже подтверждён, выполните вход');
         }
 
-        $expected = (string)$user['CONFIRM_CODE'];
+        $expected = (string) $user['CONFIRM_CODE'];
 
         if ($expected === '' || !hash_equals($expected, trim($code))) {
             throw new AuthException('Неверный код подтверждения');
         }
 
-        $userId = (int)$user['ID'];
+        $userId = (int) $user['ID'];
 
         if (!(new \CUser())->Update($userId, ['ACTIVE' => 'Y', 'CONFIRM_CODE' => ''])) {
             throw new AuthException('Не удалось подтвердить аккаунт');
@@ -165,7 +156,7 @@ class AuthService
 
     private function emailExists(string $email): bool
     {
-        return (bool)UserTable::getRow([
+        return (bool) UserTable::getRow([
             'select' => ['ID'],
             'filter' => [
                 'LOGIC' => 'OR',
@@ -175,20 +166,10 @@ class AuthService
         ]);
     }
 
-    private function anonymousEmail(): string
-    {
-        $last = UserTable::getRow([
-            'select' => ['ID'],
-            'order'  => ['ID' => 'DESC'],
-        ]);
-
-        return 'user-' . ((int)($last['ID'] ?? 0) + 100) . '@site.com';
-    }
-
     /** Группы из «Настройки модулей → Главный модуль → Группа для новых пользователей» */
     private function defaultGroups(): array
     {
-        $groups = (string)Option::get('main', 'new_user_registration_def_group', '');
+        $groups = (string) Option::get('main', 'new_user_registration_def_group', '');
 
         return array_values(array_filter(array_map('intval', explode(',', $groups))));
     }
@@ -197,7 +178,7 @@ class AuthService
     private function check(mixed $result): void
     {
         if (is_array($result) && ($result['TYPE'] ?? '') === 'ERROR') {
-            throw new AuthException($this->clean((string)$result['MESSAGE']));
+            throw new AuthException($this->clean((string) $result['MESSAGE']));
         }
     }
 
@@ -208,6 +189,6 @@ class AuthService
 
     private function siteId(): string
     {
-        return defined('SITE_ID') && SITE_ID !== '' ? SITE_ID : (string)\CSite::GetDefSite();
+        return defined('SITE_ID') && SITE_ID !== '' ? SITE_ID : (string) \CSite::GetDefSite();
     }
 }

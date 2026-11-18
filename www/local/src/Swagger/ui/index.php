@@ -88,7 +88,7 @@ $csrf = bitrix_sessid();
     <script src="https://unpkg.com/swagger-ui-dist/swagger-ui-bundle.js"></script>
     <script>
         const CSRF_TOKEN = <?= \Bitrix\Main\Web\Json::encode($csrf) ?>;
-        const CAPTCHA_ENDPOINT = '/api/auth/captcha';
+        const CAPTCHA_ENDPOINT = '/api/captcha';
         const CAPTCHA_ACTIONS = [
             '/api/auth/login',
             '/api/auth/password/forgot',

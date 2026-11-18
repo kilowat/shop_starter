@@ -1,3 +1,9 @@
 <?php
 
-class AuthException extends \RuntimeException {}
+declare(strict_types=1);
+
+namespace App\Auth;
+
+class AuthException extends \RuntimeException
+{
+}

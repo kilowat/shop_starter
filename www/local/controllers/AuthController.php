@@ -93,12 +93,13 @@ final class AuthController extends Controller
     /**
      * Регистрация по e-mail и паролю.
      */
-    public function registerAction(RegisterRequest $request): void
+    public function registerAction(RegisterRequest $request): array
     {
-        $this->authService->register(
+        return $this->authService->register(
             email: $request->email,
             password: $request->password,
             confirmPassword: $request->confirmPassword,
+            authorize: true,
         );
     }
 
