@@ -95,15 +95,10 @@ final class AuthController extends Controller
      */
     public function registerAction(RegisterRequest $request): void
     {
-        $json = $this->getRequest()->getJsonList();
-        $post = $this->getRequest()->getPostList();
-
         $this->authService->register(
             email: $request->email,
             password: $request->password,
             confirmPassword: $request->confirmPassword,
-            captchaWord: (string) ($json->get('captcha_word') ?? $post->get('captcha_word') ?? ''),
-            captchaSid: (string) ($json->get('captcha_sid') ?? $post->get('captcha_sid') ?? ''),
         );
     }
 

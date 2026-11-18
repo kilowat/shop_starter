@@ -51,7 +51,7 @@ class ProfileService
 
         $user = new \CUser();
         if (!$user->Update($userId, ['ACTIVE' => 'N'])) {
-            $errorMessage = trim(strip_tags((string) $user->LAST_ERROR)) ?: 'Не удалось деактивировать пользователя.';
+            $errorMessage = trim(strip_tags((string) $user->LAST_ERROR)) ?: 'Не удалось пользователя.';
             throw new SystemException($errorMessage);
         }
 
@@ -60,6 +60,4 @@ class ProfileService
             $USER->Logout();
         }
     }
-
-
 }

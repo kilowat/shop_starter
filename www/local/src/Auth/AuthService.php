@@ -4,48 +4,98 @@ declare(strict_types=1);
 
 namespace App\Auth;
 
-use Bitrix\Main\UserTable;
-use Exception;
-use Bitrix\Main\Authentication\Method;
+use App\Auth\Dto\ProfilePayload;
+use AuthException;
+use Bitrix\Main\Authentication\ApplicationPasswordTable;
 use Bitrix\Main\Authentication\Context;
+use Bitrix\Main\Authentication\Method;
+use Bitrix\Main\Config\Option;
+use Bitrix\Main\UserTable;
 
 class AuthService
 {
+    /**
+     * Регистрирует обычного пользователя или анонима (если $email не передан).
+     *
+     * @return array{id: int, needConfirm: bool}
+     */
     public function register(
-        string $email,
-        string $password,
-        string $confirmPassword,
-        string $captchaWord = '',
-        string $captchaSid = '',
-    ): void {
+        ?string $email = null,
+        ?string $password = null,
+        ?string $confirmPassword = null,
+        ?ProfilePayload $payload = null,
+        bool $authorize = false,
+    ): array {
         global $USER;
 
-        $result = $USER->Register(
-            USER_LOGIN: $email,
-            USER_EMAIL: $email,
-            USER_NAME: 'Пользователь ' . random_int(10000, 99999),
-            USER_LAST_NAME: '',
-            USER_PASSWORD: $password,
-            USER_CONFIRM_PASSWORD: $confirmPassword,
-            captcha_sid: $captchaSid,
-            captcha_word: $captchaWord,
+        $email = $email !== null ? trim($email) : '';
+
+        if ($email === '') {
+            $email           = $this->anonymousEmail();
+            $password        = ApplicationPasswordTable::generatePassword();
+            $confirmPassword = $password;
+            $needConfirm     = false;
+        } else {
+            if (!check_email($email)) {
+                throw new AuthException('Некорректный email');
+            }
+
+            if ($this->emailExists($email)) {
+                throw new AuthException('Пользователь с таким email уже существует');
+            }
+
+            $needConfirm = Option::get('main', 'new_user_registration_email_confirmation') === 'Y';
+        }
+
+        $code = $needConfirm ? str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT) : '';
+
+        $fields = array_merge(
+            [
+                'NAME'     => 'Пользователь ' . random_int(10000, 99999),
+                'GROUP_ID' => $this->defaultGroups(),
+                'LID'      => $this->siteId(),
+            ],
+            $payload?->toFields() ?? [],
+            [
+                'LOGIN'            => $email,
+                'EMAIL'            => $email,
+                'PASSWORD'         => $password,
+                'CONFIRM_PASSWORD' => $confirmPassword,
+                'ACTIVE'           => $needConfirm ? 'N' : 'Y',
+                'CONFIRM_CODE'     => $code,
+            ],
         );
 
-        if (is_array($result) && ($result['TYPE'] ?? '') === 'ERROR') {
-            throw new Exception($result['MESSAGE']);
+        $user = new \CUser();
+        $id = $user->Add($fields);
+
+        if (!$id) {
+            throw new AuthException($this->clean($user->LAST_ERROR));
         }
+
+        if ($needConfirm) {
+            \CEvent::Send('NEW_USER_CONFIRM', $this->siteId(), [
+                'USER_ID'      => $id,
+                'EMAIL'        => $email,
+                'LOGIN'        => $email,
+                'CONFIRM_CODE' => $code,
+            ]);
+        } elseif ($authorize) {
+            $USER->Authorize(
+                (new Context())->setUserId((int)$id)->setMethod(Method::Registration),
+                true,
+            );
+        }
+
+        return ['id' => (int)$id, 'need_confirm' => $needConfirm];
     }
+
     public function login(string $login, string $password, bool $remember = true): void
     {
         global $USER;
 
-        $result = $USER->Login($login, $password, $remember ? 'Y' : 'N');
-
-        if (is_array($result) && ($result['TYPE'] ?? '') === 'ERROR') {
-            throw new Exception($result['MESSAGE']);
-        }
+        $this->check($USER->Login($login, $password, $remember ? 'Y' : 'N'));
     }
-
 
     public function logout(): void
     {
@@ -54,40 +104,33 @@ class AuthService
         $USER->Logout();
     }
 
-
     public function confirmRegistration(string $email, string $code, bool $remember = true): void
     {
         global $USER;
 
-        $user = UserTable::getList([
+        $user = UserTable::getRow([
             'select' => ['ID', 'ACTIVE', 'CONFIRM_CODE'],
-            'filter' => ['=EMAIL' => $email,],
-            'limit' => 1,
-        ])->fetch();
+            'filter' => ['=LOGIN' => trim($email)],
+        ]);
 
         if (!$user) {
-            throw new Exception('Пользователь не найден');
+            throw new AuthException('Пользователь не найден');
         }
 
         if ($user['ACTIVE'] === 'Y') {
-            throw new Exception('Аккаунт уже подтверждён, выполните вход');
+            throw new AuthException('Аккаунт уже подтверждён, выполните вход');
         }
 
-        $expected = (string) $user['CONFIRM_CODE'];
+        $expected = (string)$user['CONFIRM_CODE'];
 
-        if ($expected === '' || !hash_equals($expected, $code)) {
-            throw new Exception('Неверный код подтверждения');
+        if ($expected === '' || !hash_equals($expected, trim($code))) {
+            throw new AuthException('Неверный код подтверждения');
         }
-        $userId = (int) $user['ID'];
-        $newUser = new \CUser();
 
-        $updateRes = $newUser->Update($userId, [
-            'ACTIVE' => 'Y',
-            'CONFIRM_CODE' => '',
-        ]);
+        $userId = (int)$user['ID'];
 
-        if (!$updateRes) {
-            throw new Exception('Ошибка подтверждения кода, пользователь не найден');
+        if (!(new \CUser())->Update($userId, ['ACTIVE' => 'Y', 'CONFIRM_CODE' => ''])) {
+            throw new AuthException('Не удалось подтвердить аккаунт');
         }
 
         $USER->Authorize(
@@ -98,49 +141,73 @@ class AuthService
 
     public function sendPasswordChangeCode(string $email): void
     {
-        $result = \CUser::SendPassword('', $email, $this->siteId());
+        $email = trim($email);
 
-        if (is_array($result) && ($result['TYPE'] ?? '') === 'ERROR') {
-            throw new Exception($result['MESSAGE']);
+        if (!check_email($email)) {
+            throw new AuthException('Некорректный email');
         }
+
+        \CUser::SendPassword($email, $email, $this->siteId());
     }
 
-
-    public function resetPassword(
-        string $email,
-        string $checkword,
-        string $password,
-        ?string $passwordConfirm,
-    ): void {
+    public function resetPassword(string $email, string $checkword, string $password, string $passwordConfirm): void
+    {
         global $USER;
 
-        $user = UserTable::getList([
-            'select' => ['ID', 'LOGIN', 'ACTIVE'],
-            'filter' => ['=EMAIL' => $email, 'ACTIVE' => 'Y'],
-            'limit' => 1,
-        ])->fetch();
-
-        if (!$user) {
-            throw new Exception('Пользователь не найден');
-        }
-
-        $result = $USER->ChangePassword(
-            $user['LOGIN'],
-            $checkword,
+        $this->check($USER->ChangePassword(
+            trim($email),
+            trim($checkword),
             $password,
             $passwordConfirm,
             $this->siteId(),
-        );
+        ));
+    }
 
+    private function emailExists(string $email): bool
+    {
+        return (bool)UserTable::getRow([
+            'select' => ['ID'],
+            'filter' => [
+                'LOGIC' => 'OR',
+                ['=LOGIN' => $email],
+                ['=EMAIL' => $email],
+            ],
+        ]);
+    }
+
+    private function anonymousEmail(): string
+    {
+        $last = UserTable::getRow([
+            'select' => ['ID'],
+            'order'  => ['ID' => 'DESC'],
+        ]);
+
+        return 'user-' . ((int)($last['ID'] ?? 0) + 100) . '@site.com';
+    }
+
+    /** Группы из «Настройки модулей → Главный модуль → Группа для новых пользователей» */
+    private function defaultGroups(): array
+    {
+        $groups = (string)Option::get('main', 'new_user_registration_def_group', '');
+
+        return array_values(array_filter(array_map('intval', explode(',', $groups))));
+    }
+
+    /** Бросает исключение, если Bitrix вернул ошибку */
+    private function check(mixed $result): void
+    {
         if (is_array($result) && ($result['TYPE'] ?? '') === 'ERROR') {
-            throw new Exception($result['MESSAGE']);
+            throw new AuthException($this->clean((string)$result['MESSAGE']));
         }
     }
 
+    private function clean(string $message): string
+    {
+        return trim(strip_tags(str_replace('<br>', "\n", $message)));
+    }
 
     private function siteId(): string
     {
-        return defined('SITE_ID') && SITE_ID !== '' ? SITE_ID : (string) \CSite::GetDefSite();
+        return defined('SITE_ID') && SITE_ID !== '' ? SITE_ID : (string)\CSite::GetDefSite();
     }
-
 }
