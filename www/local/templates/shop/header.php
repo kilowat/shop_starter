@@ -2,10 +2,15 @@
 
 addAssetCss([
     'lib/bootstrap/bootstrap.min.css',
+    'css/popup.css',
+    'css/auth-form.css',
 ]);
 
 addAssetJs([
     'lib/signa/dist/signa.min.js',
+    'js/api.js',
+    'js/popup.js',
+    'js/auth-form.js',
 ]);
 
 
@@ -45,6 +50,9 @@ addAssetJs([
                     ],
                     false
                 ); ?>
+                <div class="ms-3">
+                    <?php incFile('components/user_link.php'); ?>
+                </div>
             </div>
         </nav>
     </header>

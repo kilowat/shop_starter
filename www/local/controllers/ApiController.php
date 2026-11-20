@@ -3,6 +3,7 @@
 namespace Controllers;
 
 use App\Auth\AuthException;
+use App\Helper\CaptchaRequiredException;
 use Bitrix\Main\AccessDeniedException;
 use Bitrix\Main\Engine\AutoWire\BinderArgumentException;
 use Bitrix\Main\Engine\Controller;
@@ -37,6 +38,7 @@ abstract class ApiController extends Controller
     {
         return match (true) {
             $e instanceof AccessDeniedException => ['ACCESS_DENIED', $e->getMessage(), 403],
+            $e instanceof CaptchaRequiredException => ['CAPTCHA_REQUIRED', $e->getMessage(), 400],
             $e instanceof AuthException => ['AUTH_ERROR', $e->getMessage(), 400],
             $e instanceof SystemException => ['BUSINESS_ERROR', $e->getMessage(), 400],
             default => ['INTERNAL_ERROR', 'Внутренняя ошибка сервера', 500],

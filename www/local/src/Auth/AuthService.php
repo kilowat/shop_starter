@@ -178,7 +178,13 @@ class AuthService
     private function check(mixed $result): void
     {
         if (is_array($result) && ($result['TYPE'] ?? '') === 'ERROR') {
-            throw new AuthException($this->clean((string) $result['MESSAGE']));
+            $message = $this->clean((string) $result['MESSAGE']);
+
+            if (!empty($result['IS_CAPTCHA_ERROR'])) {
+                throw new CaptchaRequiredException($message);
+            }
+
+            throw new AuthException($message);
         }
     }
 

@@ -1,0 +1,66 @@
+/* ---------- Форма авторизации (signa) ---------- */
+
+auth-form {
+    display: block;
+}
+
+popup-trigger {
+    display: inline-flex;
+}
+
+.auth-form {
+    /* Ширина задаётся веб-компоненту через data-width (см. auth-form.js) */
+    width: var(--auth-form-width, 380px);
+    max-width: 100%;
+    margin-inline: auto;
+}
+
+.auth-form__status-row {
+    min-height: 1.5rem;
+}
+
+.auth-form__status {
+    display: inline-block;
+    font-weight: 600;
+}
+
+.auth-form__status--pending {
+    color: #b8860b;
+}
+
+.auth-form__status--error {
+    color: #dc3545;
+}
+
+.auth-form__status--success {
+    color: #198754;
+}
+
+/* Общий текст ошибки: место зарезервировано, чтобы форма не прыгала */
+.auth-form__general {
+    min-height: 1.25rem;
+    margin-bottom: .25rem;
+    font-size: .8125rem;
+    line-height: 1.25rem;
+    color: #dc3545;
+    white-space: pre-line;
+}
+
+.auth-form__field {
+    margin-bottom: .5rem;
+}
+
+/* Текст ошибки под конкретным полем: высота зарезервирована заранее */
+.auth-form__field-error {
+    min-height: 1.25rem;
+    margin-top: .25rem;
+    font-size: .75rem;
+    line-height: 1.25rem;
+    color: #dc3545;
+    white-space: pre-line;
+}
+
+.auth-form__captcha {
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
