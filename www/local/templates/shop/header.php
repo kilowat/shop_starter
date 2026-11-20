@@ -13,6 +13,7 @@ addAssetJs([
     'js/popup.js',
     'js/captcha.js',
     'js/auth-form.js',
+    'js/register-form.js',
 ]);
 
 

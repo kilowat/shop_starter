@@ -7,6 +7,7 @@ use App\Auth\AuthService;
 use App\Auth\Dto\ConfirmRegistrationRequest;
 use App\Auth\Dto\EmailRequest;
 use App\Auth\Dto\LoginRequest;
+use App\Auth\Dto\ProfilePayload;
 use App\Auth\Dto\RegisterRequest;
 use App\Auth\Dto\ResetPasswordRequest;
 use Bitrix\Main\Engine\ActionFilter;
@@ -100,6 +101,7 @@ final class AuthController extends ApiController
             email: $request->email,
             password: $request->password,
             confirmPassword: $request->confirmPassword,
+            payload: new ProfilePayload($request->name, $request->phone),
             authorize: true,
         );
     }

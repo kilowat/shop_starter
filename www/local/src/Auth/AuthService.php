@@ -9,7 +9,10 @@ use App\Helper\Captcha\CaptchaRequiredException;
 use Bitrix\Main\Authentication\Context;
 use Bitrix\Main\Authentication\Method;
 use Bitrix\Main\Config\Option;
+use Bitrix\Main\Error;
 use Bitrix\Main\UserTable;
+use Bitrix\Main\Validation\ValidationException;
+use Bitrix\Main\Validation\Validator\PhoneValidator;
 
 class AuthService
 {
@@ -30,11 +33,31 @@ class AuthService
         $email = trim($email);
 
         if (!check_email($email)) {
-            throw new AuthException('Некорректный email');
+            throw new ValidationException([
+                new Error('Некорректный email', 'email'),
+            ]);
         }
 
         if ($this->emailExists($email)) {
-            throw new AuthException('Пользователь с таким email уже существует');
+            throw new ValidationException([
+                new Error('Пользователь с таким email уже существует', 'email'),
+            ]);
+        }
+
+        if ($password !== $confirmPassword) {
+            throw new ValidationException([
+                new Error('Пароли не совпадают', 'confirm_password'),
+            ]);
+        }
+
+        if ($payload !== null && $payload->phone !== null && $payload->phone !== '') {
+            $phoneValidation = (new PhoneValidator())->validate($payload->phone);
+
+            if (!$phoneValidation->isSuccess()) {
+                throw new ValidationException([
+                    new Error('Некорректный номер телефона', 'phone'),
+                ]);
+            }
         }
 
         $needConfirm = Option::get('main', 'new_user_registration_email_confirmation') === 'Y';

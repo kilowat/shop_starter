@@ -281,6 +281,10 @@ signa.component('auth-form', ({ $this, signal, computed, html }, { useFetch }) =
                 <button class="btn btn-primary w-100" type="submit" disabled=${status.value === 'pending'}>
                     Войти
                 </button>
+
+                <div class="text-center mt-3">
+                    <a href="/register/">Нет аккаунта? Зарегистрироваться</a>
+                </div>
             </form>
         `;
 });
