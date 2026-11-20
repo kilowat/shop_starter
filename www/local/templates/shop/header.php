@@ -9,7 +9,8 @@ addAssetCss([
 
 addAssetJs([
     'lib/signa/dist/signa.min.js',
-    'js/api.js',
+    'js/use-fetch.js',
+    'js/use-form.js',
     'js/popup.js',
     'js/captcha.js',
     'js/auth-form.js',

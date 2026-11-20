@@ -50,6 +50,15 @@ popup-trigger {
     margin-bottom: .5rem;
 }
 
+.auth-form__choices {
+    display: grid;
+    gap: .25rem;
+}
+
+.auth-form__choices .form-check {
+    margin-bottom: 0;
+}
+
 /* Текст ошибки под конкретным полем: высота зарезервирована заранее */
 .auth-form__field-error {
     min-height: 1.25rem;
