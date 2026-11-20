@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Auth;
 
 use App\Auth\Dto\ProfilePayload;
+use App\Helper\Captcha\CaptchaRequiredException;
 use Bitrix\Main\Authentication\Context;
 use Bitrix\Main\Authentication\Method;
 use Bitrix\Main\Config\Option;
@@ -81,9 +82,16 @@ class AuthService
         return ['id' => (int) $id, 'need_confirm' => $needConfirm];
     }
 
-    public function login(string $login, string $password, bool $remember = true): void
-    {
+    public function login(
+        string $login,
+        string $password,
+        bool $remember = true,
+        string $captchaWord = '',
+        string $captchaSid = '',
+    ): void {
         global $USER;
+
+        $this->passCaptchaToCore($captchaWord, $captchaSid);
 
         $this->check($USER->Login($login, $password, $remember ? 'Y' : 'N'));
     }
@@ -177,6 +185,7 @@ class AuthService
     /** Бросает исключение, если Bitrix вернул ошибку */
     private function check(mixed $result): void
     {
+
         if (is_array($result) && ($result['TYPE'] ?? '') === 'ERROR') {
             $message = $this->clean((string) $result['MESSAGE']);
 
@@ -186,6 +195,17 @@ class AuthService
 
             throw new AuthException($message);
         }
+    }
+
+    /** Ядро читает капчу только из $_REQUEST — для JSON-запросов пробрасываем её туда. */
+    private function passCaptchaToCore(string $word, string $sid): void
+    {
+        if ($word === '') {
+            return;
+        }
+
+        $_REQUEST['captcha_word'] = $word;
+        $_REQUEST['captcha_sid'] = $sid;
     }
 
     private function clean(string $message): string

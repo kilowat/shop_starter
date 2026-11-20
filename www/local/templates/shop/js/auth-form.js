@@ -21,7 +21,7 @@
  */
 
 // Повторная регистрация тега в signa бросает ошибку, а Bitrix может подключить скрипт дважды.
-signa.component('auth-form', ({ $this, signal, html }, { useFetch }) => {
+signa.component('auth-form', ({ $this, signal, computed, html }, { useFetch }) => {
     const FORM_WIDTH = '380px';
     const REQUEST_DELAY = 350;
     const SUCCESS_REDIRECT_DELAY = 400;
@@ -115,6 +115,19 @@ signa.component('auth-form', ({ $this, signal, html }, { useFetch }) => {
         clearFieldError(name);
     };
 
+    // Состояние капчи отдаём отдельному веб-компоненту <captcha-field>.
+    const captchaSid = computed(() => captcha.value?.captcha_sid || '');
+    const captchaUrl = computed(() => captcha.value?.captcha_url || '');
+    const captchaError = computed(() => fieldErrors.value.captcha_word || '');
+    const captchaInvalid = computed(
+        () => Boolean(fieldErrors.value.captcha_word || allFieldsInvalid.value)
+    );
+
+    const handleCaptchaInput = (value) => {
+        captchaWord.value = value;
+        clearFieldError('captcha_word');
+    };
+
     const toggleRemember = (event) => {
         remember.value = event.target.checked;
     };
@@ -202,33 +215,16 @@ signa.component('auth-form', ({ $this, signal, html }, { useFetch }) => {
             <div class="auth-form__field-error">${fieldErrors.value[name] || ''}</div>
         `;
 
-    const captchaSrc = () => captcha.value.captcha_url
-        || `/bitrix/tools/captcha.php?captcha_sid=${captcha.value.captcha_sid}`;
-
-    const renderCaptcha = () => captcha.value
-        ? html`
-                <div class="auth-form__field">
-                    <label class="form-label" for=${fieldId('captcha_word')}>Код с картинки</label>
-                    <img
-                        class="auth-form__captcha d-block mb-2"
-                        src=${captchaSrc()}
-                        alt="Код с картинки"
-                    >
-                    <input
-                        id=${fieldId('captcha_word')}
-                        class=${inputClass('captcha_word')}
-                        type="text"
-                        name="captcha_word"
-                        autocomplete="off"
-                        required
-                        aria-invalid=${ariaInvalid('captcha_word')}
-                        value=${captchaWord.value}
-                        oninput=${fieldInput('captcha_word', captchaWord)}
-                    >
-                    ${fieldError('captcha_word')}
-                </div>
-            `
-        : '';
+    const renderCaptcha = () => html`
+            <captcha-field
+                .sid=${captchaSid}
+                .url=${captchaUrl}
+                .error=${captchaError}
+                .invalid=${captchaInvalid}
+                .onInput=${handleCaptchaInput}
+                .onRefresh=${loadCaptcha}
+            ></captcha-field>
+        `;
 
     return () => html`
             <form class="auth-form" onsubmit=${submit}>

@@ -59,8 +59,3 @@ popup-trigger {
     color: #dc3545;
     white-space: pre-line;
 }
-
-.auth-form__captcha {
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
-}

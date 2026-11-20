@@ -3,7 +3,7 @@
 namespace Controllers;
 
 use App\Auth\AuthException;
-use App\Helper\CaptchaRequiredException;
+use App\Helper\Captcha\CaptchaRequiredException;
 use Bitrix\Main\AccessDeniedException;
 use Bitrix\Main\Engine\AutoWire\BinderArgumentException;
 use Bitrix\Main\Engine\Controller;

@@ -91,7 +91,7 @@
         --popup-offset-min: 24px;
         --popup-offset-max: 80px;
         --popup-offset: clamp(var(--popup-offset-min),
-                8vw,
+                8vmin,
                 var(--popup-offset-max));
         --popup-base-width: 280px;
         --popup-base-height: 160px;

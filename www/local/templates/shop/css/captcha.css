@@ -1,0 +1,45 @@
+/* ---------- Капча (signa) ---------- */
+
+captcha-field {
+    display: block;
+}
+
+.captcha-field {
+    margin-bottom: .5rem;
+}
+
+/* Капча в строку с инпутом: форма меньше растёт по высоте */
+.captcha-field__row {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+
+.captcha-field__row .form-control {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+}
+
+.captcha-field__image {
+    flex: 0 0 auto;
+    width: 180px;
+    max-width: 45%;
+    height: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+.captcha-field__image--refresh {
+    cursor: pointer;
+}
+
+/* Текст ошибки под полем: высота зарезервирована заранее */
+.captcha-field__error {
+    min-height: 1.25rem;
+    margin-top: .25rem;
+    font-size: .75rem;
+    line-height: 1.25rem;
+    color: #dc3545;
+    white-space: pre-line;
+}

@@ -4,12 +4,14 @@ addAssetCss([
     'lib/bootstrap/bootstrap.min.css',
     'css/popup.css',
     'css/auth-form.css',
+    'css/captcha.css',
 ]);
 
 addAssetJs([
     'lib/signa/dist/signa.min.js',
     'js/api.js',
     'js/popup.js',
+    'js/captcha.js',
     'js/auth-form.js',
 ]);
 

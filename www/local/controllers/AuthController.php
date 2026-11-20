@@ -86,6 +86,8 @@ final class AuthController extends ApiController
             login: $request->email,
             password: $request->password,
             remember: $request->remember,
+            captchaWord: $request->captchaWord,
+            captchaSid: $request->captchaSid,
         );
     }
 
