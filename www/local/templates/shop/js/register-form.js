@@ -21,6 +21,7 @@
 signa.component('register-form', ({ $this, signal, html }, { useForm }) => {
     const FIELD_KEYS = ['name', 'email', 'phone', 'password', 'confirm_password'];
     const AUTH_URL = '/auth/?login=yes';
+    const REDIRECT_DELAY = 600;
 
     const backurl = $this.dataset.backurl || '/';
 
@@ -33,7 +34,14 @@ signa.component('register-form', ({ $this, signal, html }, { useForm }) => {
     const form = useForm('/api/auth/register', {
         root: $this,
         fields: FIELD_KEYS,
-        texts: { error: 'Не удалось зарегистрироваться' },
+        texts: {
+            error: 'Не удалось зарегистрироваться',
+            success: (data) => (
+                data?.need_confirm
+                    ? `Код подтверждения отправлен на ${email.value.trim()}.`
+                    : 'Регистрация прошла успешно'
+            ),
+        },
         body: () => {
             const body = {
                 name: name.value.trim(),
@@ -55,13 +63,14 @@ signa.component('register-form', ({ $this, signal, html }, { useForm }) => {
                 ? { confirm_password: 'Пароли не совпадают' }
                 : null
         ),
-        onSubmit: (data, form) => {
-            if (!data?.need_confirm) {
-                window.location.href = backurl;
+        onSubmit: (data) => {
+            if (data?.need_confirm) {
                 return;
             }
 
-            form.successMessage.value = `Код подтверждения отправлен на ${email.value.trim()}.`;
+            setTimeout(() => {
+                window.location.href = backurl;
+            }, REDIRECT_DELAY);
         },
     });
 
@@ -72,7 +81,6 @@ signa.component('register-form', ({ $this, signal, html }, { useForm }) => {
         inputClass,
         ariaInvalid,
         fieldError,
-        renderMessages,
         submit,
     } = form;
 
@@ -100,8 +108,6 @@ signa.component('register-form', ({ $this, signal, html }, { useForm }) => {
     return () => html`
         <form class="auth-form" onsubmit=${submit}>
             <h2 class="h4 mb-2">Регистрация</h2>
-
-            ${renderMessages()}
 
             ${renderField('name', 'Имя', name, {
                 autocomplete: 'name', minlength: 2, maxlength: 50, required: true,

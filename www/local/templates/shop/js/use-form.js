@@ -6,7 +6,7 @@
  *     fields: ['email', 'password'],    // ключи полей для раскладки ошибок API
  *     body: () => ({ ... }),            // тело запроса, вызывается один раз за submit
  *     initialError: '',                 // ошибка из PHP после редиректа
- *     texts: { error: 'Не удалось отправить форму' },
+ *     texts: { error: '...', success: '...' }, // тексты уведомлений
  *     validate: (body) => null,         // клиентская проверка: { поле: текст } или null
  *     onSubmit: (data, form) => {},     // хук после успешного ответа; редирект — здесь
  *     onErrors: async (parsed) => {},   // хук после раскладки ошибок, до статуса error (капча)
@@ -18,7 +18,7 @@
  *
  * Состояние — сигналы signa:
  *   status: '' | 'pending' | 'error' | 'success'
- *   generalError, successMessage, fieldErrors, allFieldsInvalid
+ *   fieldErrors, allFieldsInvalid
  *
  * Хелперы для разметки: fieldId, inputClass, ariaInvalid, fieldError —
  * id/классы/ошибка поля; fieldInput(name, state, read?) — oninput/onchange,
@@ -38,20 +38,19 @@
  *       ${fieldError('about')}
  *   </div>`
  *
- * renderMessages — общий текст ошибки под заголовком;
  * submit — обработчик onsubmit.
  * request — useFetch-инстанс запроса формы (например, refresh() после сбоя сети).
+ * Ошибки полей выводятся под инпутами, остальные ошибки и успех — через notice.
  *
  * Контракт ответа API тот же, что у useFetch:
  *   { status: 'success'|'error', data, errors: [{ code, message }] }.
  * Код ошибки поля — имя поля или «поле.правило»; трейс Bitrix начинается с «[Класс]».
  */
 
-signa.state('useForm', ({ signal, html }, { useFetch }) => {
+signa.state('useForm', ({ signal, html }, { useFetch, notice }) => {
     const REQUEST_DELAY = 350;   // задержка перед запросом, чтобы статусы было видно
     // Стандартные коды Bitrix: при них подсвечиваются все поля формы.
     const ALL_FIELDS_INVALID_CODES = ['AUTH_ERROR', 'CAPTCHA_REQUIRED'];
-    const VALIDATION_MESSAGE = 'Поля заполнены некорректно';
 
     /** Отладочный трейс Bitrix приходит как «[Класс] …» — в форме его не показываем. */
     const isTrace = (message) => /^\s*\[[^\]]+\]/.test(String(message || ''));
@@ -77,6 +76,7 @@ signa.state('useForm', ({ signal, html }, { useFetch }) => {
 
         const {
             error: fallbackError = 'Не удалось отправить форму',
+            success: successText = 'Успешно',
         } = texts;
 
         if (typeof buildBody !== 'function') {
@@ -93,15 +93,16 @@ signa.state('useForm', ({ signal, html }, { useFetch }) => {
         const uid = `f${Math.random().toString(36).slice(2, 10)}`;
         const fieldId = (name) => `${uid}-${name}`;
 
-        // Начальная ошибка пришла из PHP после редиректа — сразу показываем её.
         const status = signal(initialError ? 'error' : '');
-        const generalError = signal(initialError);
-        const successMessage = signal('');
         const fieldErrors = signal({});
         const allFieldsInvalid = signal(initialError !== '');
 
+        if (initialError) {
+            notice.error(initialError);
+        }
+
         /**
-         * Раскладывает ошибки API по полям: код поля -> под инпут, первая прочая -> общий текст.
+         * Раскладывает ошибки API по полям: код поля -> под инпут, первая прочая -> notice.
          * Коды валидации Bitrix — имя поля или «поле.правило».
          */
         const readErrors = (errors) => {
@@ -153,11 +154,16 @@ signa.state('useForm', ({ signal, html }, { useFetch }) => {
             const hasFieldErrors = Object.keys(fields).length > 0;
 
             fieldErrors.value = fields;
-            generalError.value = general || (hasFieldErrors ? VALIDATION_MESSAGE : fallbackError);
             allFieldsInvalid.value = ALL_FIELDS_INVALID_CODES.includes(generalCode);
 
             if (onErrors) {
                 await onErrors({ fields, general, generalCode });
+            }
+
+            if (general) {
+                notice.error(general);
+            } else if (!hasFieldErrors) {
+                notice.error(fallbackError);
             }
 
             status.value = 'error';
@@ -171,8 +177,6 @@ signa.state('useForm', ({ signal, html }, { useFetch }) => {
             }
 
             status.value = 'pending';
-            generalError.value = '';
-            successMessage.value = '';
             fieldErrors.value = {};
             allFieldsInvalid.value = false;
 
@@ -185,7 +189,6 @@ signa.state('useForm', ({ signal, html }, { useFetch }) => {
                         console.warn('[useForm] validate должен вернуть { поле: текст } или null');
                     } else if (Object.keys(validation).length > 0) {
                         fieldErrors.value = validation;
-                        generalError.value = VALIDATION_MESSAGE;
                         status.value = 'error';
                         return;
                     }
@@ -198,6 +201,14 @@ signa.state('useForm', ({ signal, html }, { useFetch }) => {
                 if (ok) {
                     status.value = 'success';
 
+                    const message = typeof successText === 'function'
+                        ? successText(data, form)
+                        : successText;
+
+                    if (message) {
+                        notice.success(message);
+                    }
+
                     if (onSubmit) {
                         await onSubmit(data, form);
                     }
@@ -209,7 +220,7 @@ signa.state('useForm', ({ signal, html }, { useFetch }) => {
             } catch (e) {
                 // body или хук бросил — не оставляем форму в pending навсегда.
                 status.value = 'error';
-                generalError.value = fallbackError;
+                notice.error(fallbackError);
                 console.error('[useForm]', e);
             }
         };
@@ -222,25 +233,9 @@ signa.state('useForm', ({ signal, html }, { useFetch }) => {
             <div class="auth-form__field-error" aria-live="polite">${fieldErrors.value[name] || ''}</div>
         `;
 
-        const renderMessages = () => {
-            const message = successMessage.value || generalError.value;
-
-            if (!message) {
-                return '';
-            }
-
-            return html`
-                <div class=${successMessage.value ? 'auth-form__general text-success' : 'auth-form__general'} aria-live="polite">
-                    ${message}
-                </div>
-            `;
-        };
-
         const form = {
             request,
             status,
-            generalError,
-            successMessage,
             fieldErrors,
             allFieldsInvalid,
             fieldId,
@@ -250,7 +245,6 @@ signa.state('useForm', ({ signal, html }, { useFetch }) => {
             inputClass,
             ariaInvalid,
             fieldError,
-            renderMessages,
             submit,
         };
 

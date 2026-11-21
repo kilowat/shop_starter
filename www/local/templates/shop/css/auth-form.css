@@ -15,15 +15,6 @@ popup-trigger {
     margin-inline: auto;
 }
 
-/* Общий текст ошибки под заголовком */
-.auth-form__general {
-    margin-bottom: .25rem;
-    font-size: .8125rem;
-    line-height: 1.25rem;
-    color: #dc3545;
-    white-space: pre-line;
-}
-
 .auth-form__field {
     margin-bottom: .25rem;
 }

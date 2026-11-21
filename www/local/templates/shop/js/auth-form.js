@@ -20,6 +20,7 @@
 // повторная регистрация тега в signa бросила бы ошибку.
 signa.component('auth-form', ({ $this, signal, html }, { useForm, useCaptcha }) => {
     const FIELD_KEYS = ['email', 'password', 'captcha_word'];
+    const REDIRECT_DELAY = 600;
 
     const backurl = $this.dataset.backurl || '';
     const initialError = $this.dataset.error || '';
@@ -36,7 +37,10 @@ signa.component('auth-form', ({ $this, signal, html }, { useForm, useCaptcha }) 
         root: $this,
         fields: FIELD_KEYS,
         initialError,
-        texts: { error: 'Не удалось выполнить вход' },
+        texts: {
+            error: 'Не удалось выполнить вход',
+            success: 'Вы успешно вошли',
+        },
         body: () => ({
             email: email.value.trim(),
             password: password.value,
@@ -44,11 +48,13 @@ signa.component('auth-form', ({ $this, signal, html }, { useForm, useCaptcha }) 
             ...captcha.body(),
         }),
         onSubmit: () => {
-            if (backurl) {
-                window.location.href = backurl;
-            } else {
-                window.location.reload();
-            }
+            setTimeout(() => {
+                if (backurl) {
+                    window.location.href = backurl;
+                } else {
+                    window.location.reload();
+                }
+            }, REDIRECT_DELAY);
         },
         onErrors: (parsed) => captcha.onErrors(parsed),
     });
@@ -62,7 +68,6 @@ signa.component('auth-form', ({ $this, signal, html }, { useForm, useCaptcha }) 
         inputClass,
         ariaInvalid,
         fieldError,
-        renderMessages,
         submit,
     } = form;
 
@@ -94,8 +99,6 @@ signa.component('auth-form', ({ $this, signal, html }, { useForm, useCaptcha }) 
     return () => html`
         <form class="auth-form" onsubmit=${submit}>
             <h2 class="h4 mb-2">Авторизация</h2>
-
-            ${renderMessages()}
 
             ${renderField('email', 'E-mail', email, {
                 type: 'email', autocomplete: 'username', required: true,

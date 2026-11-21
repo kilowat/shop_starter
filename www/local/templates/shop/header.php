@@ -3,6 +3,7 @@
 addAssetCss([
     'lib/bootstrap/bootstrap.min.css',
     'css/popup.css',
+    'css/notice.css',
     'css/auth-form.css',
     'css/captcha.css',
 ]);
@@ -10,6 +11,7 @@ addAssetCss([
 addAssetJs([
     'lib/signa/dist/signa.min.js',
     'js/use-fetch.js',
+    'js/notice.js',
     'js/use-form.js',
     'js/use-captcha.js',
     'js/popup.js',

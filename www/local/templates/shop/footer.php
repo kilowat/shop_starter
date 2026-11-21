@@ -21,6 +21,7 @@ if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) {
 </footer>
 
 <popup-window></popup-window>
+<notice-toast></notice-toast>
 
 </body>
 
