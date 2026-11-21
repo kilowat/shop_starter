@@ -16,6 +16,12 @@ use Bitrix\Main\Config\Option;
 
 class BasketService
 {
+    private const OFFER_VARIANT_SKIP = [
+        'ARTNUMBER',
+        'CML2_LINK',
+        'MORE_PHOTO',
+    ];
+
     private Sale\Basket $basket;
     private array $discountData = [];
     private bool $discountsCalculated = false;
@@ -92,6 +98,12 @@ class BasketService
         $item = $existing ? reset($existing) : null;
 
         if ($item) {
+            foreach ($existing as $existingItem) {
+                if ($existingItem->isDelay()) {
+                    $existingItem->setField('DELAY', 'N');
+                }
+            }
+
             // Повторное добавление = инкремент
             $newQuantity = $this->normalizeQuantity($productId, $item->getQuantity() + $quantity);
             $this->changeQuantity($item, $newQuantity);
@@ -271,11 +283,22 @@ class BasketService
             $result['message'] = 'Купоны очищены';
             $result['success'] = true;
         } else {
-            if (DiscountCouponsManager::add($coupon)) {
+            $added = DiscountCouponsManager::add($coupon);
+            $status = $this->findCouponStatus($coupon);
+            $statusCode = $status['code'] ?? '';
+
+            if ($added && !in_array($statusCode, ['NOT_FOUND', 'FREEZE'], true)) {
                 $result['success'] = true;
                 $result['message'] = 'Купон успешно применен';
             } else {
-                $result['message'] = 'Не удалось применить купон';
+                // Не оставляем неверный купон в хранилище, иначе он попадает в список.
+                DiscountCouponsManager::delete($coupon);
+
+                $result['message'] = match ($statusCode) {
+                    'NOT_FOUND' => 'Купон не найден',
+                    'FREEZE' => 'Купон не может быть применён',
+                    default => 'Не удалось применить купон',
+                };
             }
         }
 
@@ -311,6 +334,11 @@ class BasketService
 
         foreach ($coupons as $coupon) {
             $status = $this->getCouponStatus($coupon);
+
+            if (in_array($status['code'], ['NOT_FOUND', 'FREEZE'], true)) {
+                DiscountCouponsManager::delete($coupon['COUPON']);
+                continue;
+            }
 
             $result[] = [
                 'coupon' => $coupon['COUPON'],
@@ -357,6 +385,7 @@ class BasketService
 
         $elements = $this->loadElements($allElementIds);
         $this->buildElementUrlMap($elements);
+        $offerVariants = $this->loadOfferVariants($elements);
 
         $productTypes = $this->loadProductTypes($productIds);
         $ratioData = $this->getRatioData();
@@ -385,6 +414,7 @@ class BasketService
                 'product_type' => $productTypes[$productId] ?? null,
                 'detail_url' => $detailUrl,
                 'offer_url' => $parentId ? $detailUrl . '?offer=' . $productId : null,
+                'variant' => $offerVariants[(int) $productId] ?? '',
                 'image' => $this->getImage($element, $elements[$parentId] ?? null),
                 'delay' => $item->isDelay(),
                 'can_buy' => $item->canBuy(),
@@ -692,6 +722,86 @@ class BasketService
         return $properties;
     }
 
+    /**
+     * Подписи выбранных вариантов для торговых предложений.
+     *
+     * @param array<int, array> $elements
+     * @return array<int, string>
+     */
+    private function loadOfferVariants(array $elements): array
+    {
+        if (empty($this->skuParentMap)) {
+            return [];
+        }
+
+        Loader::includeModule('highloadblock');
+
+        $variants = [];
+
+        foreach ($elements as $elementId => $element) {
+            if (!isset($this->skuParentMap[$elementId])) {
+                continue;
+            }
+
+            $variants[$elementId] = $this->buildOfferVariant(
+                (int) $element['IBLOCK_ID'],
+                (int) $elementId
+            );
+        }
+
+        return $variants;
+    }
+
+    /**
+     * Собирает значения свойств оффера в строку вида «Белый / 35».
+     */
+    private function buildOfferVariant(int $iblockId, int $elementId): string
+    {
+        $parts = [];
+        $propertyResult = \CIBlockElement::GetProperty(
+            $iblockId,
+            $elementId,
+            ['sort' => 'asc'],
+            ['ACTIVE' => 'Y']
+        );
+
+        while ($property = $propertyResult->Fetch()) {
+            $code = (string) ($property['CODE'] ?? '');
+
+            if ($code === '' || in_array($code, self::OFFER_VARIANT_SKIP, true)) {
+                continue;
+            }
+
+            $value = $property['VALUE'];
+            $propertyType = (string) ($property['PROPERTY_TYPE'] ?? '');
+
+            if ($propertyType === 'L' && !empty($property['VALUE_ENUM'])) {
+                $value = $property['VALUE_ENUM'];
+            } elseif (($property['USER_TYPE'] ?? '') === 'directory' && $value !== null && $value !== '') {
+                $extended = \CIBlockPropertyDirectory::GetExtendedValue(
+                    $property,
+                    ['VALUE' => $value]
+                );
+
+                if (is_array($extended) && !empty($extended['UF_NAME'])) {
+                    $value = $extended['UF_NAME'];
+                }
+            }
+
+            if (is_array($value)) {
+                $value = implode(', ', array_filter(array_map('strval', $value), 'strlen'));
+            }
+
+            $value = trim(strip_tags((string) $value));
+
+            if ($value !== '') {
+                $parts[] = $value;
+            }
+        }
+
+        return implode(' / ', $parts);
+    }
+
     /*=====================================
     =           PRICE LOGIC               =
     =====================================*/
@@ -995,6 +1105,19 @@ class BasketService
         }
 
         return roundEx($weight / $weightKoef, SALE_WEIGHT_PRECISION) . ' ' . $weightUnit;
+    }
+
+    private function findCouponStatus(string $coupon): ?array
+    {
+        $coupons = DiscountCouponsManager::get(true, ['COUPON' => $coupon], true, false);
+
+        if (!is_array($coupons) || empty($coupons)) {
+            return null;
+        }
+
+        $couponData = reset($coupons);
+
+        return $this->getCouponStatus($couponData);
     }
 
     private function getCouponStatus(array $coupon): array

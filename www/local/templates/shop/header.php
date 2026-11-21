@@ -12,17 +12,21 @@ addAssetJs([
     'lib/signa/dist/signa.min.js',
     'js/use-fetch.js',
     'js/notice.js',
+    'js/basket.js',
+    'js/mini-basket.js',
+    'js/product-buy.js',
+    'js/cart-page.js',
     'js/popup.js',
     'js/auth-form.js',
     'js/register-form.js',
 ]);
-
 
 /** @var CMain $APPLICATION */
 ?><!DOCTYPE html>
 <html lang="ru">
 
 <head>
+    <meta name="csrf-token" content="<?= bitrix_sessid() ?>">
     <?php $APPLICATION->ShowHead(); ?>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -54,8 +58,12 @@ addAssetJs([
                     ],
                     false
                 ); ?>
-                <div class="ms-3">
-                    <?php incFile('components/user_link.php'); ?>
+                <div class="ms-auto d-flex align-items-center gap-2">
+                    <?php $APPLICATION->IncludeComponent('shop:basket.seed', '', [], false); ?>
+
+                    <div>
+                        <?php incFile('components/user_link.php'); ?>
+                    </div>
                 </div>
             </div>
         </nav>

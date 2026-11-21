@@ -4,6 +4,7 @@ namespace Controllers;
 
 use App\Basket\BasketRequest;
 use App\Basket\BasketService;
+use Bitrix\Main\Engine\ActionFilter;
 
 final class BasketController extends ApiController
 {
@@ -16,9 +17,23 @@ final class BasketController extends ApiController
         $this->basket = new BasketService();
     }
 
+    protected function getDefaultPreFilters(): array
+    {
+        return [
+            new ActionFilter\HttpMethod([ActionFilter\HttpMethod::METHOD_POST]),
+            new ActionFilter\Csrf(),
+        ];
+    }
+
     public function configureActions(): array
     {
-        return [];
+        return [
+            'show' => [
+                'prefilters' => [
+                    new ActionFilter\HttpMethod([ActionFilter\HttpMethod::METHOD_GET]),
+                ],
+            ],
+        ];
     }
 
     public function getAutoWiredParameters(): array

@@ -51,23 +51,23 @@ if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) {
                         <? endif; ?>
 
                         <div class="card-body d-flex flex-column">
-                            <h3 class="h6 card-title">
-                                <a href="<?= $item['DETAIL_PAGE_URL'] ?>"
-                                    class="stretched-link text-body text-decoration-none"><?= $name ?></a>
-                            </h3>
+                            <h3 class="h6 card-title"><?= $name ?></h3>
 
-                            <div class="fs-5 fw-semibold mt-auto">
+                            <div class="fs-5 fw-semibold mt-auto mb-3">
                                 <? if ($price): ?>
-                                    <?= $hasOffers ? 'от ' : '' ?>            <?= $price ?>
+                                    <?= $hasOffers ? 'от ' : '' ?><?= $price ?>
                                 <? else: ?>
                                     Цена по запросу
                                 <? endif; ?>
                             </div>
-                        </div>
 
-                        <div class="card-footer bg-transparent border-0 pt-0">
-                            <button type="button" class="btn btn-primary w-100 buy-button position-relative z-2"
-                                data-product-id="<?= (int) $item['ID'] ?>">Купить</button>
+                            <product-buy
+                                class="d-block"
+                                data-product-id="<?= (int) $item['ID'] ?>"
+                                data-url="<?= htmlspecialcharsbx($item['DETAIL_PAGE_URL']) ?>"
+                            >
+                                <a href="<?= htmlspecialcharsbx($item['DETAIL_PAGE_URL']) ?>" class="btn btn-primary w-100">Купить</a>
+                            </product-buy>
                         </div>
                     </article>
                 </div>

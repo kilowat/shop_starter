@@ -29,6 +29,41 @@ final class Basket
     }
 
 
+    // GET /api/basket/state
+
+    #[OA\Operation\Get(
+        path: '/api/basket/state',
+        operationId: 'basketState',
+        summary: 'Получить счётчик и ID товаров корзины',
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Успешный ответ',
+                content: new OA\Schema(
+                    type: 'object',
+                    properties: [
+                        new OA\Property(
+                            property: 'count',
+                            schema: new OA\Schema(type: 'number', format: 'float', example: 2),
+                        ),
+                        new OA\Property(
+                            property: 'productIds',
+                            schema: new OA\Schema(
+                                type: 'array',
+                                items: new OA\Schema(type: 'integer'),
+                                example: [314, 41],
+                            ),
+                        ),
+                    ],
+                ),
+            ),
+        ],
+    )]
+    public function state(): void
+    {
+    }
+
+
     // POST /api/basket/items
 
     #[OA\Operation\Post(
