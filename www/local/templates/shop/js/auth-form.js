@@ -1,131 +1,161 @@
 /**
- * Форма авторизации на signa.
+ * Форма входа: отправка, ошибки полей, капча и возврат на backurl.
+ * Разметку рисует PHP-шаблон компонента shop:auth.form.
  *
- * Общая логика (статусы, ошибки, submit) — в useForm; здесь — поля, капча и редирект.
- *
- * API:
- *   POST /api/auth/login (email, password, remember, captcha_word, captcha_sid)
- *     -> { status, data, errors: [{ code, message }] }
- *   GET /api/captcha -> { status, data: { captcha_sid, captcha_url } }
- *
- * Пустые/некорректные поля отсекает нативная валидация браузера (required, type, minlength).
- * Ошибки валидации с сервера выводятся под своим полем, текст под полем имеет
- * зарезервированную высоту, поэтому инпуты не прыгают.
- * Ошибка авторизации (неверный логин/пароль) выводится текстом под заголовком,
- * все инпуты подсвечиваются красным.
- * Капча показывается только если сервер ответил CAPTCHA_REQUIRED.
+ * POST /api/auth/login (email, password, remember, captcha_word, captcha_sid)
+ * GET  /api/captcha     -> { captcha_sid, captcha_url }
  */
-
-// Asset дедуплицирует пути, поэтому скрипт подключается один раз;
-// повторная регистрация тега в signa бросила бы ошибку.
-signa.component('auth-form', ({ $this, signal, html }, { useForm, useCaptcha }) => {
-    const FIELD_KEYS = ['email', 'password', 'captcha_word'];
-    const REDIRECT_DELAY = 600;
-
+signa.component('auth-form', ({ $this }, { useFetch, notice }) => {
+    const form = $this.querySelector('form');
+    const submitButton = form.querySelector('[type="submit"]');
     const backurl = $this.dataset.backurl || '';
-    const initialError = $this.dataset.error || '';
 
-    // Ядро Bitrix кладёт в LAST_LOGIN логин, а он может быть не e-mail — подставляем только e-mail.
-    const storedLogin = $this.dataset.login || '';
-    const lastLogin = storedLogin.includes('@') ? storedLogin : '';
+    const captchaBox = $this.querySelector('[data-captcha]');
+    const captchaInput = form.elements.captcha_word;
+    const captchaImage = $this.querySelector('[data-captcha-image]');
 
-    const email = signal(lastLogin);
-    const password = signal('');
-    const remember = signal(true);
+    const login = useFetch('/api/auth/login', { method: 'POST' });
+    const captchaRequest = useFetch('/api/captcha', { cache: 'no-store' });
 
-    const form = useForm('/api/auth/login', {
-        root: $this,
-        fields: FIELD_KEYS,
-        initialError,
-        texts: {
-            error: 'Не удалось выполнить вход',
-            success: 'Вы успешно вошли',
-        },
-        body: () => ({
-            email: email.value.trim(),
-            password: password.value,
-            remember: remember.value ? '1' : '0',
-            ...captcha.body(),
-        }),
-        onSubmit: () => {
+    let captchaSid = '';
+
+    const showFieldError = (name, message = '') => {
+        const errorBox = form.querySelector(`[data-error-for="${name}"]`);
+        const control = form.elements.namedItem(name);
+
+        if (errorBox) {
+            errorBox.textContent = message;
+        }
+
+        if (control) {
+            control.classList.toggle('is-invalid', Boolean(message));
+            control.setAttribute('aria-invalid', message ? 'true' : 'false');
+        }
+    };
+
+    const resetErrors = () => {
+        form.querySelectorAll('[data-error-for]').forEach((box) => {
+            box.textContent = '';
+        });
+        form.querySelectorAll('[name]').forEach((control) => {
+            control.classList.remove('is-invalid');
+            control.setAttribute('aria-invalid', 'false');
+        });
+    };
+
+    const invalidateAll = () => {
+        form.querySelectorAll('[name]').forEach((control) => {
+            control.classList.add('is-invalid');
+            control.setAttribute('aria-invalid', 'true');
+        });
+    };
+
+    const loadCaptcha = async () => {
+        const { ok, data } = await captchaRequest.execute();
+
+        if (!ok) {
+            return;
+        }
+
+        captchaSid = data.captcha_sid;
+        captchaImage.src = data.captcha_url;
+        captchaInput.value = '';
+        captchaInput.required = true;
+        captchaBox.hidden = false;
+    };
+
+    if ($this.dataset.error) {
+        notice.error($this.dataset.error);
+        invalidateAll();
+    }
+
+    captchaImage.addEventListener('click', loadCaptcha);
+
+    form.addEventListener('input', (event) => {
+        if (event.target.name) {
+            showFieldError(event.target.name);
+        }
+    });
+
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+
+        if (submitButton.disabled) {
+            return;
+        }
+
+        resetErrors();
+        submitButton.disabled = true;
+
+        const body = {
+            email: form.elements.email.value.trim(),
+            password: form.elements.password.value,
+            remember: form.elements.remember.checked ? '1' : '0',
+        };
+
+        if (!captchaBox.hidden) {
+            body.captcha_word = captchaInput.value.trim();
+            body.captcha_sid = captchaSid;
+        }
+
+        const { ok, errors } = await login.execute(body);
+
+        if (ok) {
+            notice.success('Авторизация успешна');
+
             setTimeout(() => {
                 if (backurl) {
                     window.location.href = backurl;
                 } else {
                     window.location.reload();
                 }
-            }, REDIRECT_DELAY);
-        },
-        onErrors: (parsed) => captcha.onErrors(parsed),
+            }, 600);
+
+            return;
+        }
+
+        let generalError = '';
+        let hasFieldErrors = false;
+        let captchaRequired = false;
+        let invalidate = false;
+
+        for (const { code, message } of errors) {
+            if (!message || String(message).startsWith('[')) {
+                continue;
+            }
+
+            const field = code === 'captchaWord' ? 'captcha_word' : code;
+
+            if (code === 'CAPTCHA_REQUIRED') {
+                captchaRequired = true;
+            }
+
+            if (code === 'AUTH_ERROR' || code === 'CAPTCHA_REQUIRED') {
+                invalidate = true;
+            }
+
+            if (form.elements.namedItem(field)) {
+                showFieldError(field, message);
+                hasFieldErrors = true;
+            } else if (!generalError) {
+                generalError = message;
+            }
+        }
+
+        if (captchaRequired || !captchaBox.hidden) {
+            await loadCaptcha();
+        }
+
+        if (invalidate) {
+            invalidateAll();
+        }
+
+        if (generalError) {
+            notice.error(generalError);
+        } else if (!hasFieldErrors) {
+            notice.error('Не удалось выполнить вход');
+        }
+
+        submitButton.disabled = false;
     });
-
-    const captcha = useCaptcha(form);
-
-    const {
-        status,
-        fieldId,
-        fieldInput,
-        inputClass,
-        ariaInvalid,
-        fieldError,
-        submit,
-    } = form;
-
-    const toggleRemember = (event) => {
-        remember.value = event.target.checked;
-    };
-
-    // Необязательные атрибуты (autocomplete, minlength, …) не передаём — uhtml их удалит.
-    const renderField = (name, label, state, attrs = {}) => html`
-        <div class="auth-form__field">
-            <label class="form-label" for=${fieldId(name)}>${label}</label>
-            <input
-                id=${fieldId(name)}
-                class=${inputClass(name)}
-                type=${attrs.type || 'text'}
-                name=${name}
-                autocomplete=${attrs.autocomplete}
-                minlength=${attrs.minlength}
-                maxlength=${attrs.maxlength}
-                required=${attrs.required}
-                aria-invalid=${ariaInvalid(name)}
-                value=${state.value}
-                oninput=${fieldInput(name, state)}
-            >
-            ${fieldError(name)}
-        </div>
-    `;
-
-    return () => html`
-        <form class="auth-form" onsubmit=${submit}>
-            <h2 class="h4 mb-2">Авторизация</h2>
-
-            ${renderField('email', 'E-mail', email, {
-                type: 'email', autocomplete: 'username', required: true,
-            })}
-            ${renderField('password', 'Пароль', password, {
-                type: 'password', autocomplete: 'current-password', minlength: 8, required: true,
-            })}
-
-            ${captcha.render()}
-
-            <label class="form-check d-inline-flex align-items-center gap-2 mb-3">
-                <input
-                    class="form-check-input m-0"
-                    type="checkbox"
-                    checked=${remember.value}
-                    onchange=${toggleRemember}
-                >
-                <span class="form-check-label">Запомнить меня</span>
-            </label>
-
-            <button class="btn btn-primary w-100 mt-3" type="submit" disabled=${status.value === 'pending'}>
-                Войти
-            </button>
-
-            <div class="text-center mt-3">
-                <a href="/register/">Нет аккаунта? Зарегистрироваться</a>
-            </div>
-        </form>
-    `;
 });

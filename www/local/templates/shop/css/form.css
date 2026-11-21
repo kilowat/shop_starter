@@ -1,0 +1,50 @@
+/* ---------- Базовые формы (signa) ---------- */
+
+popup-trigger {
+    display: inline-flex;
+}
+
+.ui-form {
+    /* Ширина по умолчанию 380px; переопределяется через --ui-form-width */
+    width: var(--ui-form-width, 380px);
+    max-width: 100%;
+    margin-inline: auto;
+}
+
+.ui-form__field {
+    margin-bottom: .25rem;
+}
+
+.ui-form > h1:first-child,
+.ui-form > h2:first-child {
+    text-align: center;
+}
+
+/* Подпись оборачивает поле, поэтому id/for не нужны */
+.ui-form__field .form-label {
+    display: block;
+}
+
+.ui-form__field .form-label .form-control,
+.ui-form__field .form-label .form-select {
+    margin-top: .5rem;
+}
+
+.ui-form__choices {
+    display: grid;
+    gap: .25rem;
+}
+
+.ui-form__choices .form-check {
+    margin-bottom: 0;
+}
+
+/* Текст ошибки под конкретным полем: высота зарезервирована заранее */
+.ui-form__field-error {
+    min-height: 1.125rem;
+    margin-top: .125rem;
+    font-size: .75rem;
+    line-height: 1.125rem;
+    color: #dc3545;
+    white-space: pre-line;
+}

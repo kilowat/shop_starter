@@ -3,7 +3,7 @@
  * Шаблон ссылки пользователя: иконка человечка + подпись.
  *
  * Для гостя ссылка обёрнута в popup-trigger: клик открывает попап
- * с формой авторизации <auth-form>.
+ * с формой авторизации из скрытого блока (data-content-id по документации signa).
  *
  * @var array $arResult
  */
@@ -25,7 +25,7 @@ $h = static fn($value): string => htmlspecialcharsbx((string) $value);
         <span><?= $h($arResult['TEXT']) ?></span>
     </a>
 <?php else: ?>
-    <popup-trigger data-component="auth-form" data-backurl="<?= $h($arResult['BACKURL']) ?>">
+    <popup-trigger data-content-id="auth-form-popup">
         <a
             href="<?= $h($arResult['LINK']) ?>"
             class="nav-link d-inline-flex align-items-center gap-2"
@@ -37,4 +37,14 @@ $h = static fn($value): string => htmlspecialcharsbx((string) $value);
             <span><?= $h($arResult['TEXT']) ?></span>
         </a>
     </popup-trigger>
+    <div style="display:none;height:0" aria-hidden="true">
+        <div id="auth-form-popup">
+            <?php $GLOBALS['APPLICATION']->IncludeComponent(
+                'shop:auth.form',
+                '',
+                ['BACKURL' => $arResult['BACKURL']],
+                false
+            ); ?>
+        </div>
+    </div>
 <?php endif; ?>

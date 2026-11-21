@@ -158,7 +158,7 @@ signa.component('popup-window', ({ signal, html, bus, effect, $this }) => {
              style=${isOpen.value ? 'display:flex' : 'display:none'}>
             <div class="popup__overlay" onclick=${close}></div>
             <div class="popup__window">
-                <div class="popup__close" onclick=${close}></div>
+                <button type="button" class="popup__close" aria-label="Закрыть" onclick=${close}></button>
                 <div class="popup__content">
                     ${renderContent()}
                 </div>

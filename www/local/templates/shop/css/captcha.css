@@ -1,11 +1,15 @@
-/* ---------- Капча (signa) ---------- */
-
-captcha-field {
-    display: block;
-}
+/* ---------- Капча ---------- */
 
 .captcha-field {
     margin-bottom: .5rem;
+}
+
+.captcha-field .form-label {
+    display: block;
+}
+
+.captcha-field .form-label .captcha-field__row {
+    margin-top: .5rem;
 }
 
 /* Капча в строку с инпутом: форма меньше растёт по высоте */

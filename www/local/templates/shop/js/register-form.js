@@ -1,137 +1,114 @@
 /**
- * Форма регистрации на signa.
+ * Форма регистрации: отправка, ошибки полей и возврат на backurl.
+ * Разметку рисует PHP-шаблон компонента shop:register.form.
  *
- * Общая логика (статусы, ошибки, submit) — в useForm; здесь — поля,
- * проверка совпадения паролей, подтверждение e-mail и редирект.
- *
- * API:
- *   POST /api/auth/register (name, email, phone, password, confirm_password)
- *     -> { status, data: { id, need_confirm }, errors: [{ code, message }] }
- *
- * Телефон необязателен и отправляется только если заполнен.
- * Пустые/некорректные поля отсекает нативная валидация браузера (required, type, minlength).
- * Совпадение паролей проверяется на клиенте, ошибка выводится под повтором пароля.
- * Ошибки API раскладываются по полям, первая прочая выводится под заголовком
- * (например, «email уже существует»).
- * Если настройки сайта требуют подтверждения email, форма сообщает об отправке кода.
+ * POST /api/auth/register (name, email, phone, password, confirm_password)
+ *   -> { id, need_confirm }
  */
-
-// Asset дедуплицирует пути, поэтому скрипт подключается один раз;
-// повторная регистрация тега в signa бросила бы ошибку.
-signa.component('register-form', ({ $this, signal, html }, { useForm }) => {
-    const FIELD_KEYS = ['name', 'email', 'phone', 'password', 'confirm_password'];
-    const AUTH_URL = '/auth/?login=yes';
-    const REDIRECT_DELAY = 600;
-
+signa.component('register-form', ({ $this }, { useFetch, notice }) => {
+    const form = $this.querySelector('form');
+    const submitButton = form.querySelector('[type="submit"]');
     const backurl = $this.dataset.backurl || '/';
+    const request = useFetch('/api/auth/register', { method: 'POST' });
 
-    const name = signal('');
-    const email = signal('');
-    const phone = signal('');
-    const password = signal('');
-    const confirmPassword = signal('');
+    const showFieldError = (name, message = '') => {
+        const errorBox = form.querySelector(`[data-error-for="${name}"]`);
+        const control = form.elements.namedItem(name);
 
-    const form = useForm('/api/auth/register', {
-        root: $this,
-        fields: FIELD_KEYS,
-        texts: {
-            error: 'Не удалось зарегистрироваться',
-            success: (data) => (
-                data?.need_confirm
-                    ? `Код подтверждения отправлен на ${email.value.trim()}.`
-                    : 'Регистрация прошла успешно'
-            ),
-        },
-        body: () => {
-            const body = {
-                name: name.value.trim(),
-                email: email.value.trim(),
-                password: password.value,
-                confirm_password: confirmPassword.value,
-            };
+        if (errorBox) {
+            errorBox.textContent = message;
+        }
 
-            const trimmedPhone = phone.value.trim();
+        if (control) {
+            control.classList.toggle('is-invalid', Boolean(message));
+            control.setAttribute('aria-invalid', message ? 'true' : 'false');
+        }
+    };
 
-            if (trimmedPhone !== '') {
-                body.phone = trimmedPhone;
-            }
+    const resetErrors = () => {
+        form.querySelectorAll('[data-error-for]').forEach((box) => {
+            box.textContent = '';
+        });
+        form.querySelectorAll('[name]').forEach((control) => {
+            control.classList.remove('is-invalid');
+            control.setAttribute('aria-invalid', 'false');
+        });
+    };
 
-            return body;
-        },
-        validate: (body) => (
-            body.password !== body.confirm_password
-                ? { confirm_password: 'Пароли не совпадают' }
-                : null
-        ),
-        onSubmit: (data) => {
-            if (data?.need_confirm) {
-                return;
-            }
-
-            setTimeout(() => {
-                window.location.href = backurl;
-            }, REDIRECT_DELAY);
-        },
+    form.addEventListener('input', (event) => {
+        if (event.target.name) {
+            showFieldError(event.target.name);
+        }
     });
 
-    const {
-        status,
-        fieldId,
-        fieldInput,
-        inputClass,
-        ariaInvalid,
-        fieldError,
-        submit,
-    } = form;
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
 
-    // Необязательные атрибуты (autocomplete, minlength, …) не передаём — uhtml их удалит.
-    const renderField = (name, label, state, attrs = {}) => html`
-        <div class="auth-form__field">
-            <label class="form-label" for=${fieldId(name)}>${label}</label>
-            <input
-                id=${fieldId(name)}
-                class=${inputClass(name)}
-                type=${attrs.type || 'text'}
-                name=${name}
-                autocomplete=${attrs.autocomplete}
-                minlength=${attrs.minlength}
-                maxlength=${attrs.maxlength}
-                required=${attrs.required}
-                aria-invalid=${ariaInvalid(name)}
-                value=${state.value}
-                oninput=${fieldInput(name, state)}
-            >
-            ${fieldError(name)}
-        </div>
-    `;
+        if (submitButton.disabled) {
+            return;
+        }
 
-    return () => html`
-        <form class="auth-form" onsubmit=${submit}>
-            <h2 class="h4 mb-2">Регистрация</h2>
+        resetErrors();
 
-            ${renderField('name', 'Имя', name, {
-                autocomplete: 'name', minlength: 2, maxlength: 50, required: true,
-            })}
-            ${renderField('email', 'E-mail', email, {
-                type: 'email', autocomplete: 'email', required: true,
-            })}
-            ${renderField('phone', 'Телефон', phone, {
-                type: 'tel', autocomplete: 'tel',
-            })}
-            ${renderField('password', 'Пароль', password, {
-                type: 'password', autocomplete: 'new-password', minlength: 8, required: true,
-            })}
-            ${renderField('confirm_password', 'Повторите пароль', confirmPassword, {
-                type: 'password', autocomplete: 'new-password', minlength: 8, required: true,
-            })}
+        const body = Object.fromEntries(new FormData(form));
 
-            <button class="btn btn-primary w-100 mt-3" type="submit" disabled=${status.value === 'pending'}>
-                Зарегистрироваться
-            </button>
+        body.name = body.name.trim();
+        body.email = body.email.trim();
+        body.phone = (body.phone || '').trim();
 
-            <div class="text-center mt-3">
-                <a href=${AUTH_URL}>Уже есть аккаунт? Войти</a>
-            </div>
-        </form>
-    `;
+        if (!body.phone) {
+            delete body.phone;
+        }
+
+        if (body.password !== body.confirm_password) {
+            showFieldError('confirm_password', 'Пароли не совпадают');
+            return;
+        }
+
+        submitButton.disabled = true;
+
+        const { ok, data, errors } = await request.execute(body);
+
+        submitButton.disabled = false;
+
+        if (ok) {
+            notice.success(
+                data?.need_confirm
+                    ? `Код подтверждения отправлен на ${body.email}`
+                    : 'Регистрация прошла успешно'
+            );
+
+            if (!data?.need_confirm) {
+                setTimeout(() => {
+                    window.location.href = backurl;
+                }, 600);
+            }
+
+            return;
+        }
+
+        let generalError = '';
+        let hasFieldErrors = false;
+
+        for (const { code, message } of errors) {
+            if (!message || String(message).startsWith('[')) {
+                continue;
+            }
+
+            const field = code === 'confirmPassword' ? 'confirm_password' : code;
+
+            if (form.elements.namedItem(field)) {
+                showFieldError(field, message);
+                hasFieldErrors = true;
+            } else if (!generalError) {
+                generalError = message;
+            }
+        }
+
+        if (generalError) {
+            notice.error(generalError);
+        } else if (!hasFieldErrors) {
+            notice.error('Не удалось зарегистрироваться');
+        }
+    });
 });
