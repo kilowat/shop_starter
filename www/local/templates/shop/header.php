@@ -11,6 +11,7 @@ addAssetJs([
     'lib/signa/dist/signa.min.js',
     'js/use-fetch.js',
     'js/use-form.js',
+    'js/use-captcha.js',
     'js/popup.js',
     'js/captcha.js',
     'js/auth-form.js',

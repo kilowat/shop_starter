@@ -1,8 +1,8 @@
 /**
  * Форма регистрации на signa.
  *
- * Общая логика (статусы, ошибки, submit, редирект) — в useForm;
- * здесь — поля, проверка совпадения паролей и подтверждение e-mail.
+ * Общая логика (статусы, ошибки, submit) — в useForm; здесь — поля,
+ * проверка совпадения паролей, подтверждение e-mail и редирект.
  *
  * API:
  *   POST /api/auth/register (name, email, phone, password, confirm_password)
@@ -33,8 +33,7 @@ signa.component('register-form', ({ $this, signal, html }, { useForm }) => {
     const form = useForm('/api/auth/register', {
         root: $this,
         fields: FIELD_KEYS,
-        backurl,
-        texts: { pending: 'Регистрирую…', error: 'Не удалось зарегистрироваться' },
+        texts: { error: 'Не удалось зарегистрироваться' },
         body: () => {
             const body = {
                 name: name.value.trim(),
@@ -56,15 +55,13 @@ signa.component('register-form', ({ $this, signal, html }, { useForm }) => {
                 ? { confirm_password: 'Пароли не совпадают' }
                 : null
         ),
-        onSuccess: (data, form) => {
+        onSubmit: (data, form) => {
             if (!data?.need_confirm) {
-                return false;
+                window.location.href = backurl;
+                return;
             }
 
-            form.status.value = 'success';
             form.successMessage.value = `Код подтверждения отправлен на ${email.value.trim()}.`;
-
-            return true;
         },
     });
 
@@ -122,7 +119,7 @@ signa.component('register-form', ({ $this, signal, html }, { useForm }) => {
                 type: 'password', autocomplete: 'new-password', minlength: 8, required: true,
             })}
 
-            <button class="btn btn-primary w-100" type="submit" disabled=${status.value === 'pending'}>
+            <button class="btn btn-primary w-100 mt-3" type="submit" disabled=${status.value === 'pending'}>
                 Зарегистрироваться
             </button>
 

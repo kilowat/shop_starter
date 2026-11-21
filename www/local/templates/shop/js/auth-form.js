@@ -1,7 +1,7 @@
 /**
  * Форма авторизации на signa.
  *
- * Общая логика (статусы, ошибки, submit, редирект) — в useForm; здесь — поля и капча.
+ * Общая логика (статусы, ошибки, submit) — в useForm; здесь — поля, капча и редирект.
  *
  * API:
  *   POST /api/auth/login (email, password, remember, captcha_word, captcha_sid)
@@ -18,9 +18,8 @@
 
 // Asset дедуплицирует пути, поэтому скрипт подключается один раз;
 // повторная регистрация тега в signa бросила бы ошибку.
-signa.component('auth-form', ({ $this, signal, computed, html }, { useFetch, useForm }) => {
+signa.component('auth-form', ({ $this, signal, html }, { useForm, useCaptcha }) => {
     const FIELD_KEYS = ['email', 'password', 'captcha_word'];
-    const CODE_CAPTCHA_REQUIRED = 'CAPTCHA_REQUIRED';
 
     const backurl = $this.dataset.backurl || '';
     const initialError = $this.dataset.error || '';
@@ -31,74 +30,41 @@ signa.component('auth-form', ({ $this, signal, computed, html }, { useFetch, use
 
     const email = signal(lastLogin);
     const password = signal('');
-    const captchaWord = signal('');
     const remember = signal(true);
-
-    const captchaRequest = useFetch('/api/captcha', { cache: 'no-store' });
-    const captcha = captchaRequest.data;
-
-    const loadCaptcha = async () => {
-        const { ok, data } = await captchaRequest.execute();
-
-        if (!ok || !data) {
-            console.warn('[auth-form] не удалось получить капчу');
-            return;
-        }
-
-        captchaWord.value = '';
-    };
 
     const form = useForm('/api/auth/login', {
         root: $this,
         fields: FIELD_KEYS,
-        backurl,
         initialError,
-        texts: { pending: 'Авторизую…', error: 'Не удалось выполнить вход' },
-        body: () => {
-            const body = {
-                email: email.value.trim(),
-                password: password.value,
-                remember: remember.value ? '1' : '0',
-            };
-
-            if (captcha.value) {
-                body.captcha_word = captchaWord.value.trim();
-                body.captcha_sid = captcha.value.captcha_sid || '';
-            }
-
-            return body;
-        },
-        onErrors: async ({ generalCode }) => {
-            if (generalCode === CODE_CAPTCHA_REQUIRED || captcha.value) {
-                await loadCaptcha();
+        texts: { error: 'Не удалось выполнить вход' },
+        body: () => ({
+            email: email.value.trim(),
+            password: password.value,
+            remember: remember.value ? '1' : '0',
+            ...captcha.body(),
+        }),
+        onSubmit: () => {
+            if (backurl) {
+                window.location.href = backurl;
+            } else {
+                window.location.reload();
             }
         },
+        onErrors: (parsed) => captcha.onErrors(parsed),
     });
+
+    const captcha = useCaptcha(form);
 
     const {
         status,
         fieldId,
         fieldInput,
-        clearFieldError,
         inputClass,
         ariaInvalid,
         fieldError,
         renderMessages,
         submit,
     } = form;
-
-    // Состояние капчи отдаём отдельному веб-компоненту <captcha-field>.
-    const captchaSid = computed(() => captcha.value?.captcha_sid || '');
-    const captchaUrl = computed(() => captcha.value?.captcha_url || '');
-    const captchaError = computed(() => form.fieldErrors.value.captcha_word || '');
-    const captchaInvalid = computed(
-        () => Boolean(form.fieldErrors.value.captcha_word || form.allFieldsInvalid.value)
-    );
-
-    const handleCaptchaInput = (value) => {
-        captchaWord.value = value;
-        clearFieldError('captcha_word');
-    };
 
     const toggleRemember = (event) => {
         remember.value = event.target.checked;
@@ -125,17 +91,6 @@ signa.component('auth-form', ({ $this, signal, computed, html }, { useFetch, use
         </div>
     `;
 
-    const renderCaptcha = () => html`
-        <captcha-field
-            .sid=${captchaSid}
-            .url=${captchaUrl}
-            .error=${captchaError}
-            .invalid=${captchaInvalid}
-            .onInput=${handleCaptchaInput}
-            .onRefresh=${loadCaptcha}
-        ></captcha-field>
-    `;
-
     return () => html`
         <form class="auth-form" onsubmit=${submit}>
             <h2 class="h4 mb-2">Авторизация</h2>
@@ -149,7 +104,7 @@ signa.component('auth-form', ({ $this, signal, computed, html }, { useFetch, use
                 type: 'password', autocomplete: 'current-password', minlength: 8, required: true,
             })}
 
-            ${renderCaptcha()}
+            ${captcha.render()}
 
             <label class="form-check d-inline-flex align-items-center gap-2 mb-3">
                 <input
@@ -161,7 +116,7 @@ signa.component('auth-form', ({ $this, signal, computed, html }, { useFetch, use
                 <span class="form-check-label">Запомнить меня</span>
             </label>
 
-            <button class="btn btn-primary w-100" type="submit" disabled=${status.value === 'pending'}>
+            <button class="btn btn-primary w-100 mt-3" type="submit" disabled=${status.value === 'pending'}>
                 Войти
             </button>
 

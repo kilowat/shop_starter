@@ -15,30 +15,8 @@ popup-trigger {
     margin-inline: auto;
 }
 
-.auth-form__status-row {
-    min-height: 1.5rem;
-}
-
-.auth-form__status {
-    display: inline-block;
-    font-weight: 600;
-}
-
-.auth-form__status--pending {
-    color: #b8860b;
-}
-
-.auth-form__status--error {
-    color: #dc3545;
-}
-
-.auth-form__status--success {
-    color: #198754;
-}
-
-/* Общий текст ошибки: место зарезервировано, чтобы форма не прыгала */
+/* Общий текст ошибки под заголовком */
 .auth-form__general {
-    min-height: 1.25rem;
     margin-bottom: .25rem;
     font-size: .8125rem;
     line-height: 1.25rem;
@@ -47,7 +25,7 @@ popup-trigger {
 }
 
 .auth-form__field {
-    margin-bottom: .5rem;
+    margin-bottom: .25rem;
 }
 
 .auth-form__choices {
@@ -61,10 +39,10 @@ popup-trigger {
 
 /* Текст ошибки под конкретным полем: высота зарезервирована заранее */
 .auth-form__field-error {
-    min-height: 1.25rem;
-    margin-top: .25rem;
+    min-height: 1.125rem;
+    margin-top: .125rem;
     font-size: .75rem;
-    line-height: 1.25rem;
+    line-height: 1.125rem;
     color: #dc3545;
     white-space: pre-line;
 }
