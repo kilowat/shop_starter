@@ -126,18 +126,20 @@ signa.component('cart-page', ({ html, signal }, { basket }) => {
             && (max === null || max === undefined || Number(item.quantity) < Number(max));
         const canDecrease = !pending && !unavailable;
         const image = item.image?.resized?.src || '';
+        const url = item.offer_url || item.detail_url || '';
         const ratio = Number(item.measure_ratio) > 0 ? Number(item.measure_ratio) : 1;
         const hasDiscount = Number(item.prices?.discount?.percent) > 0;
+        const picture = image
+            ? html`<img src=${image} alt=${item.name} width="88" height="88" class="rounded object-fit-cover bg-light flex-shrink-0" loading="lazy">`
+            : html`<div class="rounded bg-light flex-shrink-0" style="width: 88px; height: 88px;"></div>`;
 
         return html`
             <div class="list-group-item py-3">
                 <div class="d-flex flex-column flex-sm-row gap-3">
-                    ${image
-                        ? html`<img src=${image} alt=${item.name} width="88" height="88" class="rounded object-fit-cover bg-light flex-shrink-0" loading="lazy">`
-                        : html`<div class="rounded bg-light flex-shrink-0" style="width: 88px; height: 88px;"></div>`}
+                    ${url ? html`<a href=${url} class="d-block flex-shrink-0">${picture}</a>` : picture}
 
                     <div class="flex-grow-1">
-                        <a href=${item.offer_url || item.detail_url || '#'} class="fw-semibold text-body text-decoration-none">${item.name}</a>${item.variant ? html` <span class="text-muted">(${item.variant})</span>` : null}
+                        <a href=${url || '#'} class="fw-semibold text-body text-decoration-none">${item.name}</a>${item.variant ? html` <span class="text-muted">(${item.variant})</span>` : null}
 
                         ${item.props?.length
                             ? html`<div class="small text-muted mt-1">${item.props.map((prop) => html`<div>${prop.name}: ${prop.value}</div>`)}</div>`

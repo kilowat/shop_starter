@@ -8,7 +8,7 @@ if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) {
     die();
 }
 ?>
-<div class="d-flex align-items-center gap-2 mb-4">
+<catalog-sort class="d-flex align-items-center gap-2 mb-4">
     <? if ($arResult['SHOW_TITLE'] !== false): ?>
         <label class="small text-muted mb-0" for="catalog-sort"><?= $arResult['TITLE'] ?></label>
     <? endif; ?>
@@ -20,4 +20,4 @@ if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) {
             </option>
         <? endforeach; ?>
     </select>
-</div>
+</catalog-sort>

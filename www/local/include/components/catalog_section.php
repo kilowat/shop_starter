@@ -16,7 +16,7 @@ if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) {
 /** @var CMain $APPLICATION */
 
 // Имя переменной совпадает с SORT_NAME в catalog.sort.php.
-$sort = is_array($GLOBALS['arrSort'] ?? null) ? $GLOBALS['arrSort'] : [];
+$sort = is_array($GLOBALS['catalogSort'] ?? null) ? $GLOBALS['catalogSort'] : [];
 
 $APPLICATION->IncludeComponent(
     'bitrix:catalog.section',

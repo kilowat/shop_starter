@@ -41,14 +41,16 @@ if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) {
                 ?>
                 <div class="col" data-pagination-item>
                     <article class="card h-100 product-card">
-                        <? if ($item['PREVIEW_PICTURE']): ?>
-                            <?= imgTag($item['PREVIEW_PICTURE']['ID'], attrs: [
-                                'class' => 'card-img-top product-card__img',
-                                'alt' => $name,
-                            ]) ?>
-                        <? else: ?>
-                            <div class="product-card__img bg-light"></div>
-                        <? endif; ?>
+                        <a href="<?= htmlspecialcharsbx($item['DETAIL_PAGE_URL']) ?>" class="d-block" aria-label="<?= $name ?>">
+                            <? if ($item['PREVIEW_PICTURE']): ?>
+                                <?= imgTag($item['PREVIEW_PICTURE']['ID'], attrs: [
+                                    'class' => 'card-img-top product-card__img',
+                                    'alt' => $name,
+                                ]) ?>
+                            <? else: ?>
+                                <div class="product-card__img bg-light"></div>
+                            <? endif; ?>
+                        </a>
 
                         <div class="card-body d-flex flex-column">
                             <h3 class="h6 card-title"><?= $name ?></h3>
