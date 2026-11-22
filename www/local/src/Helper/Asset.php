@@ -149,6 +149,11 @@ class Asset
         }
     }
 
+    public static function addInlineJs(string $js): void
+    {
+        BitrixAsset::getInstance()->addString('<script>' . $js . '</script>', true);
+    }
+
     public static function addCss(array|string $paths): void
     {
         $asset = BitrixAsset::getInstance();

@@ -2,10 +2,10 @@
 
 namespace Controllers;
 
-use App\Basket\BasketStateService;
+use App\PageState\PageStateService;
 use Bitrix\Main\Engine\ActionFilter;
 
-final class BasketStateController extends ApiController
+final class PageStateController extends ApiController
 {
     protected function getDefaultPreFilters(): array
     {
@@ -16,6 +16,6 @@ final class BasketStateController extends ApiController
 
     public function stateAction(): array
     {
-        return (new BasketStateService())->get();
+        return (new PageStateService())->get();
     }
 }

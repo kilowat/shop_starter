@@ -21,6 +21,15 @@ addAssetJs([
     'js/register-form.js',
 ]);
 
+$pageState = (new \App\PageState\PageStateService())->get();
+
+addAssetInlineJs(
+    'window.__pageState = ' . json_encode(
+        $pageState,
+        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
+    ) . ';'
+);
+
 /** @var CMain $APPLICATION */
 ?><!DOCTYPE html>
 <html lang="ru">
@@ -59,7 +68,7 @@ addAssetJs([
                     false
                 ); ?>
                 <div class="ms-auto d-flex align-items-center gap-2">
-                    <?php $APPLICATION->IncludeComponent('shop:basket.seed', '', [], false); ?>
+                    <?php $APPLICATION->IncludeComponent('shop:basket.seed', '', ['STATE' => $pageState], false); ?>
 
                     <div>
                         <?php incFile('components/user_link.php'); ?>

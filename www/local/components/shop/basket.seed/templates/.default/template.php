@@ -4,18 +4,8 @@ if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) {
     die();
 }
 
-$seed = json_encode(
-    $arResult['SEED'],
-    JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT
-);
 $count = htmlspecialcharsbx((string) $arResult['COUNT']);
 ?>
-<script>
-window.__shopBasketSeed = <?= $seed ?>;
-if (window.signa && typeof signa.state === 'function') {
-    signa.state('basket').seed(window.__shopBasketSeed);
-}
-</script>
 <mini-basket>
     <a href="/cart/" class="btn btn-outline-dark btn-sm d-inline-flex align-items-center gap-2" aria-label="Корзина">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">

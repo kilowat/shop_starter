@@ -8,7 +8,7 @@ signa.state('basket', ({ signal, computed }, { useFetch, notice }) => {
         ),
     });
 
-    const initialPreview = window.__shopBasketSeed;
+    const initialPreview = window.__pageState?.basket;
     const preview = signal(initialPreview ? normalizePreview(initialPreview) : null);
     const previewLoading = signal(false);
 
@@ -21,7 +21,7 @@ signa.state('basket', ({ signal, computed }, { useFetch, notice }) => {
     const headers = csrf ? { 'X-Bitrix-Csrf-Token': csrf } : {};
 
     const api = {
-        state: useFetch('/api/basket/state', { cache: 'no-store', headers }),
+        state: useFetch('/api/page-state', { cache: 'no-store', headers }),
         show: useFetch('/api/basket', { cache: 'no-store', headers }),
         add: useFetch('/api/basket/items', { method: 'POST', headers }),
         quantity: useFetch('/api/basket/items/quantity', { method: 'POST', headers }),
@@ -49,7 +49,13 @@ signa.state('basket', ({ signal, computed }, { useFetch, notice }) => {
                     return false;
                 }
 
-                preview.value = normalizePreview(result.data);
+                const basketState = result.data?.basket;
+
+                if (!basketState) {
+                    return false;
+                }
+
+                preview.value = normalizePreview(basketState);
 
                 return true;
             } catch (e) {
@@ -61,15 +67,6 @@ signa.state('basket', ({ signal, computed }, { useFetch, notice }) => {
         })();
 
         return previewRequest;
-    };
-
-    const seed = (state) => {
-        if (!state) {
-            return;
-        }
-
-        window.__shopBasketSeed = state;
-        preview.value = normalizePreview(state);
     };
 
     if (preview.value === null) {
@@ -269,7 +266,6 @@ signa.state('basket', ({ signal, computed }, { useFetch, notice }) => {
         ready,
         quantity,
         productIds,
-        seed,
         refresh,
         add,
         updateQuantity,

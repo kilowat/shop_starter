@@ -2,7 +2,7 @@
 
 use Bitrix\Main\Routing\RoutingConfigurator;
 use Controllers\BasketController;
-use Controllers\BasketStateController;
+use Controllers\PageStateController;
 use Controllers\AuthController;
 use Controllers\ProfileController;
 use Controllers\CaptchaController;
@@ -10,7 +10,7 @@ use Controllers\CaptchaController;
 return static function (RoutingConfigurator $routes): void {
 
     $routes->get('/api/basket', [BasketController::class, 'show']);
-    $routes->get('/api/basket/state', [BasketStateController::class, 'state']);
+    $routes->get('/api/page-state', [PageStateController::class, 'state']);
 
     $routes->post('/api/basket/items', [BasketController::class, 'add']);
     $routes->post('/api/basket/items/quantity', [BasketController::class, 'updateQuantity']);

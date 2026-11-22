@@ -4,21 +4,22 @@ if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) {
     die();
 }
 
-use App\Basket\BasketStateService;
+use App\PageState\PageStateService;
 
 class BasketSeedComponent extends CBitrixComponent
 {
     public function executeComponent()
     {
-        $state = (new BasketStateService())->get();
+        $state = $this->arParams['STATE'] ?? null;
+
+        if (!is_array($state)) {
+            $state = (new PageStateService())->get();
+        }
+
+        $basket = is_array($state['basket'] ?? null) ? $state['basket'] : [];
 
         $this->arResult = [
-            'COUNT' => (float) ($state['count'] ?? 0),
-            'PRODUCT_IDS' => array_values(array_map('intval', $state['productIds'] ?? [])),
-        ];
-        $this->arResult['SEED'] = [
-            'count' => $this->arResult['COUNT'],
-            'productIds' => $this->arResult['PRODUCT_IDS'],
+            'COUNT' => (float) ($basket['count'] ?? 0),
         ];
 
         $this->includeComponentTemplate();

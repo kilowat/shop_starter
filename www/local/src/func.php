@@ -113,6 +113,14 @@ function addAssetJs(array|string $paths): void
 }
 
 /**
+ * Добавить инлайновый JS
+ */
+function addAssetInlineJs(string $js): void
+{
+    Asset::addInlineJs($js);
+}
+
+/**
  * Добавить CSS
  */
 function addAssetCss(array|string $paths): void
